@@ -1,7 +1,8 @@
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 
-export default function ScaffoldingDashboard() {
+export default function ScaffoldingDashboard({ auth }) {
     const [stats, setStats] = useState({
         total_locations: 0,
         active_sites: 0,
@@ -83,10 +84,16 @@ export default function ScaffoldingDashboard() {
     const coverageGrowth = stats.coverage > 0 ? '+8%' : '+0%';
 
     return (
-        <>
+        <AuthenticatedLayout
+            header={
+                <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
+                    Scaffolding Dashboard
+                </h2>
+            }
+        >
             <Head title="Scaffolding Route Management System" />
 
-            <div className="min-h-screen bg-black text-white p-5">
+            <div className="min-h-screen bg-gray-900 text-white p-5">
                 <div className="max-w-7xl mx-auto">
                     <header className="text-center mb-10">
                         <div className="w-15 h-15 bg-amber-500 mx-auto mb-5 rounded-xl flex items-center justify-center text-3xl">
@@ -215,6 +222,6 @@ export default function ScaffoldingDashboard() {
                     </div>
                 </div>
             </div>
-        </>
+        </AuthenticatedLayout>
     );
 }
