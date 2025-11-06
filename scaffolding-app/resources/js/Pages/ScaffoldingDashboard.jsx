@@ -18,6 +18,8 @@ export default function ScaffoldingDashboard({ auth }) {
     const [mappingData, setMappingData] = useState(null);
     const [showMapper, setShowMapper] = useState(false);
     const [analyzing, setAnalyzing] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [errors, setErrors] = useState([]);
 
     const API_BASE = 'http://localhost:8000/api/v1';
 
@@ -37,11 +39,44 @@ export default function ScaffoldingDashboard({ auth }) {
         }
     };
 
+    const getErrorMessage = (error, status) => {
+        const errorMap = {
+            400: 'Solicitud inválida',
+            401: 'No autorizado',
+            403: 'Acceso denegado',
+            404: 'Endpoint no encontrado',
+            413: 'Archivo muy grande',
+            415: 'Tipo no soportado',
+            422: 'Datos inválidos',
+            429: 'Muchas solicitudes',
+            500: 'Error del servidor',
+            502: 'Servidor caído',
+            503: 'Servicio no disponible',
+        };
+
+        if (status && errorMap[status]) {
+            return errorMap[status];
+        }
+
+        if (error.message.includes('Failed to fetch')) {
+            return 'Sin conexión';
+        }
+        if (error.message.includes('NetworkError')) {
+            return 'Error de red';
+        }
+        if (error.message.includes('timeout')) {
+            return 'Tiempo agotado';
+        }
+
+        return 'Error desconocido';
+    };
+
     const handleFileSelect = async (file) => {
         if (!file) return;
 
         setSelectedFile(file);
         setAnalyzing(true);
+        setErrors([]);
 
         const formData = new FormData();
         formData.append('file', file);
@@ -54,13 +89,12 @@ export default function ScaffoldingDashboard({ auth }) {
 
             if (!response.ok) {
                 const text = await response.text();
-                console.error('Response status:', response.status);
-                console.error('Response text:', text.substring(0, 500));
-                throw new Error(`HTTP ${response.status}: ${text.substring(0, 100)}`);
+                const errorMsg = getErrorMessage(new Error(text), response.status);
+                setErrors([errorMsg]);
+                throw new Error(errorMsg);
             }
 
             const result = await response.json();
-
             setMappingData(result);
 
             if (result.requires_manual_mapping) {
@@ -69,8 +103,7 @@ export default function ScaffoldingDashboard({ auth }) {
                 await uploadWithMapping(file, result.auto_mapping);
             }
         } catch (error) {
-            console.error('Full error:', error);
-            alert('❌ Error analyzing file: ' + error.message);
+            console.error('Analysis error:', error);
         } finally {
             setAnalyzing(false);
         }
@@ -79,6 +112,8 @@ export default function ScaffoldingDashboard({ auth }) {
     const uploadWithMapping = async (file, mapping) => {
         setUploading(true);
         setShowMapper(false);
+        setUploadProgress(0);
+        setErrors([]);
 
         const formData = new FormData();
         formData.append('file', file);
@@ -86,25 +121,47 @@ export default function ScaffoldingDashboard({ auth }) {
 
         const startTime = Date.now();
 
+        const progressInterval = setInterval(() => {
+            setUploadProgress(prev => {
+                if (prev >= 90) return prev;
+                return prev + Math.random() * 15;
+            });
+        }, 200);
+
         try {
             const response = await fetch(`${API_BASE}/upload-with-mapping`, {
                 method: 'POST',
                 body: formData
             });
 
+            clearInterval(progressInterval);
+
+            if (!response.ok) {
+                const result = await response.json().catch(() => ({ message: 'Error desconocido' }));
+                const errorMsg = getErrorMessage(new Error(result.message), response.status);
+                setErrors([errorMsg]);
+                setUploadProgress(0);
+                return;
+            }
+
             const result = await response.json();
             const duration = ((Date.now() - startTime) / 1000).toFixed(2);
 
-            if (response.ok) {
-                alert(`✅ File uploaded successfully!\n\nProcessed: ${result.data.processed} records\nTime: ${duration}s\nSpeed: ${Math.round(result.data.processed / duration)} records/s`);
+            setUploadProgress(100);
+
+            setTimeout(() => {
+                alert(`✅ Archivo subido exitosamente!\n\nProcesados: ${result.data.processed} registros\nTiempo: ${duration}s\nVelocidad: ${Math.round(result.data.processed / duration)} registros/s`);
                 loadStats();
                 setSelectedFile(null);
                 setMappingData(null);
-            } else {
-                alert(`❌ Error: ${result.message}`);
-            }
+                setUploadProgress(0);
+            }, 500);
+
         } catch (error) {
-            alert('❌ Error uploading file: ' + error.message);
+            clearInterval(progressInterval);
+            const errorMsg = getErrorMessage(error, null);
+            setErrors([errorMsg]);
+            setUploadProgress(0);
         } finally {
             setUploading(false);
         }
@@ -240,17 +297,52 @@ export default function ScaffoldingDashboard({ auth }) {
                                 onChange={(e) => e.target.files[0] && handleFileSelect(e.target.files[0])}
                             />
 
+                            {errors.length > 0 && (
+                                <div className="mt-4 bg-red-900/30 border border-red-500/50 rounded-lg p-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="text-red-500 text-2xl">⚠️</div>
+                                        <div className="flex-1">
+                                            <div className="text-red-400 font-bold mb-2">Errores detectados</div>
+                                            <div className="space-y-1">
+                                                {errors.map((error, index) => (
+                                                    <div key={index} className="text-red-300 text-sm flex items-center gap-2">
+                                                        <span className="w-1.5 h-1.5 bg-red-400 rounded-full"></span>
+                                                        {error}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {analyzing && (
                                 <div className="text-center p-5">
-                                    <div className="text-amber-500 text-lg font-bold mb-2">🔍 Analyzing CSV...</div>
-                                    <div className="text-gray-400 text-sm">Reading headers and matching columns</div>
+                                    <div className="text-amber-500 text-lg font-bold mb-2">🔍 Analizando CSV...</div>
+                                    <div className="text-gray-400 text-sm">Leyendo cabeceras y haciendo match</div>
                                 </div>
                             )}
 
                             {uploading && (
-                                <div className="text-center p-5">
-                                    <div className="text-amber-500 text-lg font-bold mb-2">⚡ Processing file...</div>
-                                    <div className="text-gray-400 text-sm">Using bulk insert for faster processing</div>
+                                <div className="p-5">
+                                    <div className="text-amber-500 text-lg font-bold mb-4 text-center">⚡ Procesando archivo...</div>
+
+                                    <div className="mb-2">
+                                        <div className="flex justify-between text-sm text-gray-400 mb-2">
+                                            <span>Progreso</span>
+                                            <span>{Math.round(uploadProgress)}%</span>
+                                        </div>
+                                        <div className="w-full bg-zinc-800 rounded-full h-3 overflow-hidden">
+                                            <div
+                                                className="bg-gradient-to-r from-amber-500 to-amber-600 h-full rounded-full transition-all duration-300 ease-out"
+                                                style={{ width: `${uploadProgress}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+
+                                    <div className="text-gray-400 text-xs text-center mt-3">
+                                        Usando bulk insert para procesar más rápido
+                                    </div>
                                 </div>
                             )}
                         </div>
