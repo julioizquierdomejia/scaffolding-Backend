@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
+import ColumnMapper from '@/Components/ColumnMapper';
 
 export default function ScaffoldingDashboard({ auth }) {
     const [stats, setStats] = useState({
@@ -13,6 +14,10 @@ export default function ScaffoldingDashboard({ auth }) {
     });
     const [uploading, setUploading] = useState(false);
     const [dragActive, setDragActive] = useState(false);
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [mappingData, setMappingData] = useState(null);
+    const [showMapper, setShowMapper] = useState(false);
+    const [analyzing, setAnalyzing] = useState(false);
 
     const API_BASE = 'http://localhost:8000/api/v1';
 
@@ -35,30 +40,84 @@ export default function ScaffoldingDashboard({ auth }) {
     const handleFileSelect = async (file) => {
         if (!file) return;
 
-        setUploading(true);
+        setSelectedFile(file);
+        setAnalyzing(true);
 
         const formData = new FormData();
         formData.append('file', file);
 
         try {
-            const response = await fetch(`${API_BASE}/upload`, {
+            const response = await fetch(`${API_BASE}/analyze-csv`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const text = await response.text();
+                console.error('Response status:', response.status);
+                console.error('Response text:', text.substring(0, 500));
+                throw new Error(`HTTP ${response.status}: ${text.substring(0, 100)}`);
+            }
+
+            const result = await response.json();
+
+            setMappingData(result);
+
+            if (result.requires_manual_mapping) {
+                setShowMapper(true);
+            } else {
+                await uploadWithMapping(file, result.auto_mapping);
+            }
+        } catch (error) {
+            console.error('Full error:', error);
+            alert('❌ Error analyzing file: ' + error.message);
+        } finally {
+            setAnalyzing(false);
+        }
+    };
+
+    const uploadWithMapping = async (file, mapping) => {
+        setUploading(true);
+        setShowMapper(false);
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('mapping', JSON.stringify(mapping));
+
+        const startTime = Date.now();
+
+        try {
+            const response = await fetch(`${API_BASE}/upload-with-mapping`, {
                 method: 'POST',
                 body: formData
             });
 
             const result = await response.json();
+            const duration = ((Date.now() - startTime) / 1000).toFixed(2);
 
             if (response.ok) {
-                alert(`File uploaded successfully!\nProcessed: ${result.data.processed} records`);
+                alert(`✅ File uploaded successfully!\n\nProcessed: ${result.data.processed} records\nTime: ${duration}s\nSpeed: ${Math.round(result.data.processed / duration)} records/s`);
                 loadStats();
+                setSelectedFile(null);
+                setMappingData(null);
             } else {
-                alert(`Error: ${result.message}`);
+                alert(`❌ Error: ${result.message}`);
             }
         } catch (error) {
-            alert('Error uploading file: ' + error.message);
+            alert('❌ Error uploading file: ' + error.message);
         } finally {
             setUploading(false);
         }
+    };
+
+    const handleMappingConfirm = (mapping) => {
+        uploadWithMapping(selectedFile, mapping);
+    };
+
+    const handleMappingCancel = () => {
+        setShowMapper(false);
+        setSelectedFile(null);
+        setMappingData(null);
     };
 
     const handleDrag = (e) => {
@@ -181,8 +240,18 @@ export default function ScaffoldingDashboard({ auth }) {
                                 onChange={(e) => e.target.files[0] && handleFileSelect(e.target.files[0])}
                             />
 
+                            {analyzing && (
+                                <div className="text-center p-5">
+                                    <div className="text-amber-500 text-lg font-bold mb-2">🔍 Analyzing CSV...</div>
+                                    <div className="text-gray-400 text-sm">Reading headers and matching columns</div>
+                                </div>
+                            )}
+
                             {uploading && (
-                                <div className="text-center p-5 text-amber-500">Processing file...</div>
+                                <div className="text-center p-5">
+                                    <div className="text-amber-500 text-lg font-bold mb-2">⚡ Processing file...</div>
+                                    <div className="text-gray-400 text-sm">Using bulk insert for faster processing</div>
+                                </div>
                             )}
                         </div>
 
@@ -222,6 +291,16 @@ export default function ScaffoldingDashboard({ auth }) {
                     </div>
                 </div>
             </div>
+
+            {showMapper && mappingData && (
+                <ColumnMapper
+                    csvHeaders={mappingData.csv_headers}
+                    dbColumns={mappingData.db_columns}
+                    autoMapping={mappingData.auto_mapping}
+                    onConfirm={handleMappingConfirm}
+                    onCancel={handleMappingCancel}
+                />
+            )}
         </AuthenticatedLayout>
     );
 }
