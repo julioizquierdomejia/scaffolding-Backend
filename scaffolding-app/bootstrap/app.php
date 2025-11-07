@@ -24,6 +24,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'api/*',
         ]);
+
+        // Add DisableCache middleware in local environment
+        $middleware->web(append: [
+            \App\Http\Middleware\DisableCache::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import ColumnMapper from '@/Components/ColumnMapper';
 
+// Scaffolding Dashboard - With column mapping, progress bar and error handling
 export default function ScaffoldingDashboard({ auth }) {
     const [stats, setStats] = useState({
         total_locations: 0,
