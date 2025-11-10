@@ -2,6 +2,8 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import ColumnMapper from '@/Components/ColumnMapper';
+import LocationsTable from '@/Components/LocationsTable';
+import LocationsMap from '@/Components/LocationsMap';
 
 // Scaffolding Dashboard - With column mapping, progress bar and error handling
 export default function ScaffoldingDashboard({ auth }) {
@@ -21,11 +23,15 @@ export default function ScaffoldingDashboard({ auth }) {
     const [analyzing, setAnalyzing] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [errors, setErrors] = useState([]);
+    const [locations, setLocations] = useState([]);
+    const [viewMode, setViewMode] = useState('table'); // 'table' or 'map'
+    const [loadingLocations, setLoadingLocations] = useState(false);
 
-    const API_BASE = 'http://localhost:8000/api/v1';
+    const API_BASE = '/api/v1';
 
     useEffect(() => {
         loadStats();
+        loadLocations();
         const interval = setInterval(loadStats, 30000);
         return () => clearInterval(interval);
     }, []);
@@ -37,6 +43,19 @@ export default function ScaffoldingDashboard({ auth }) {
             setStats(data);
         } catch (error) {
             console.error('Error loading stats:', error);
+        }
+    };
+
+    const loadLocations = async () => {
+        setLoadingLocations(true);
+        try {
+            const response = await fetch(`${API_BASE}/scaffolding_locations`);
+            const data = await response.json();
+            setLocations(data);
+        } catch (error) {
+            console.error('Error loading locations:', error);
+        } finally {
+            setLoadingLocations(false);
         }
     };
 
@@ -98,11 +117,8 @@ export default function ScaffoldingDashboard({ auth }) {
             const result = await response.json();
             setMappingData(result);
 
-            if (result.requires_manual_mapping) {
-                setShowMapper(true);
-            } else {
-                await uploadWithMapping(file, result.auto_mapping);
-            }
+            // Siempre mostrar el mapper para que el usuario confirme el mapeo
+            setShowMapper(true);
         } catch (error) {
             console.error('Analysis error:', error);
         } finally {
@@ -153,6 +169,7 @@ export default function ScaffoldingDashboard({ auth }) {
             setTimeout(() => {
                 alert(`✅ Archivo subido exitosamente!\n\nProcesados: ${result.data.processed} registros\nTiempo: ${duration}s\nVelocidad: ${Math.round(result.data.processed / duration)} registros/s`);
                 loadStats();
+                loadLocations();
                 setSelectedFile(null);
                 setMappingData(null);
                 setUploadProgress(0);
@@ -382,6 +399,60 @@ export default function ScaffoldingDashboard({ auth }) {
                             </div>
                         </div>
                     </div>
+
+                    {/* Sección de visualización de datos */}
+                    {locations.length > 0 && (
+                        <div className="mt-10">
+                            <div className="flex items-center justify-between mb-6">
+                                <div>
+                                    <h2 className="text-amber-500 text-2xl font-bold flex items-center gap-2">
+                                        📊 Datos Cargados
+                                    </h2>
+                                    <p className="text-gray-500 text-sm mt-1">
+                                        Visualiza todos los andamios en tabla o mapa
+                                    </p>
+                                </div>
+
+                                {/* Switch para alternar vista */}
+                                <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-lg p-2">
+                                    <button
+                                        onClick={() => setViewMode('table')}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                                            viewMode === 'table'
+                                                ? 'bg-amber-500 text-black font-semibold'
+                                                : 'text-gray-400 hover:text-white'
+                                        }`}
+                                    >
+                                        <span className="text-lg">📋</span>
+                                        <span>Tabla</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('map')}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                                            viewMode === 'map'
+                                                ? 'bg-amber-500 text-black font-semibold'
+                                                : 'text-gray-400 hover:text-white'
+                                        }`}
+                                    >
+                                        <span className="text-lg">🗺️</span>
+                                        <span>Mapa</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Contenido según la vista seleccionada */}
+                            {loadingLocations ? (
+                                <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-12 text-center">
+                                    <div className="text-amber-500 text-4xl mb-4">⏳</div>
+                                    <div className="text-white text-lg">Cargando ubicaciones...</div>
+                                </div>
+                            ) : viewMode === 'table' ? (
+                                <LocationsTable locations={locations} />
+                            ) : (
+                                <LocationsMap locations={locations} />
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 
