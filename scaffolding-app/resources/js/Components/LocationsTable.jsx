@@ -1,18 +1,44 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 export default function LocationsTable({ locations }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(25);
 
-    const filteredLocations = locations.filter(location => {
-        const matchesSearch =
-            location.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (location.address && location.address.toLowerCase().includes(searchTerm.toLowerCase()));
+    const filteredLocations = useMemo(() => {
+        return locations.filter(location => {
+            const matchesSearch =
+                location.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (location.address && location.address.toLowerCase().includes(searchTerm.toLowerCase()));
 
-        const matchesStatus = statusFilter === 'all' || location.status === statusFilter;
+            const matchesStatus = statusFilter === 'all' || location.status === statusFilter;
 
-        return matchesSearch && matchesStatus;
-    });
+            return matchesSearch && matchesStatus;
+        });
+    }, [locations, searchTerm, statusFilter]);
+
+    // Calcular paginación
+    const totalPages = Math.ceil(filteredLocations.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const currentLocations = filteredLocations.slice(startIndex, endIndex);
+
+    // Resetear a página 1 cuando cambien los filtros
+    const handleSearchChange = (value) => {
+        setSearchTerm(value);
+        setCurrentPage(1);
+    };
+
+    const handleStatusChange = (value) => {
+        setStatusFilter(value);
+        setCurrentPage(1);
+    };
+
+    const handleItemsPerPageChange = (value) => {
+        setItemsPerPage(Number(value));
+        setCurrentPage(1);
+    };
 
     const getStatusColor = (status) => {
         switch(status) {
@@ -48,14 +74,14 @@ export default function LocationsTable({ locations }) {
                         type="text"
                         placeholder="🔍 Buscar por nombre o dirección..."
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={(e) => handleSearchChange(e.target.value)}
                         className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500"
                     />
                 </div>
                 <div>
                     <select
                         value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
+                        onChange={(e) => handleStatusChange(e.target.value)}
                         className="bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-500"
                     >
                         <option value="all">Todos los estados</option>
@@ -64,10 +90,25 @@ export default function LocationsTable({ locations }) {
                         <option value="maintenance">En mantenimiento</option>
                     </select>
                 </div>
+                <div>
+                    <select
+                        value={itemsPerPage}
+                        onChange={(e) => handleItemsPerPageChange(e.target.value)}
+                        className="bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-500"
+                    >
+                        <option value="10">10 por página</option>
+                        <option value="25">25 por página</option>
+                        <option value="50">50 por página</option>
+                        <option value="100">100 por página</option>
+                    </select>
+                </div>
             </div>
 
-            <div className="text-gray-400 text-sm mb-4">
-                Mostrando {filteredLocations.length} de {locations.length} ubicaciones
+            <div className="text-gray-400 text-sm mb-4 flex items-center justify-between">
+                <span>
+                    Mostrando {startIndex + 1}-{Math.min(endIndex, filteredLocations.length)} de {filteredLocations.length} ubicaciones
+                    {filteredLocations.length !== locations.length && ` (${locations.length} totales)`}
+                </span>
             </div>
 
             <div className="overflow-x-auto">
@@ -82,14 +123,14 @@ export default function LocationsTable({ locations }) {
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredLocations.length === 0 ? (
+                        {currentLocations.length === 0 ? (
                             <tr>
                                 <td colSpan="5" className="text-center py-8 text-gray-500">
                                     No se encontraron ubicaciones
                                 </td>
                             </tr>
                         ) : (
-                            filteredLocations.map((location) => (
+                            currentLocations.map((location) => (
                                 <tr
                                     key={location.id}
                                     className="border-b border-zinc-800 hover:bg-zinc-800/50 transition-colors"
@@ -117,6 +158,86 @@ export default function LocationsTable({ locations }) {
                     </tbody>
                 </table>
             </div>
+
+            {/* Controles de paginación */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-6 pt-4 border-t border-zinc-800">
+                    <button
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                        className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                            currentPage === 1
+                                ? 'bg-zinc-800 text-gray-600 cursor-not-allowed'
+                                : 'bg-amber-500 text-black hover:bg-amber-600'
+                        }`}
+                    >
+                        ← Anterior
+                    </button>
+
+                    <div className="flex items-center gap-2">
+                        {/* Primera página */}
+                        {currentPage > 3 && (
+                            <>
+                                <button
+                                    onClick={() => setCurrentPage(1)}
+                                    className="w-10 h-10 rounded-lg bg-zinc-800 text-white hover:bg-amber-500 hover:text-black transition-all"
+                                >
+                                    1
+                                </button>
+                                {currentPage > 4 && <span className="text-gray-500">...</span>}
+                            </>
+                        )}
+
+                        {/* Páginas cercanas */}
+                        {Array.from({ length: totalPages }, (_, i) => i + 1)
+                            .filter(page => {
+                                return page === currentPage ||
+                                    page === currentPage - 1 ||
+                                    page === currentPage + 1 ||
+                                    page === currentPage - 2 ||
+                                    page === currentPage + 2;
+                            })
+                            .map(page => (
+                                <button
+                                    key={page}
+                                    onClick={() => setCurrentPage(page)}
+                                    className={`w-10 h-10 rounded-lg font-medium transition-all ${
+                                        page === currentPage
+                                            ? 'bg-amber-500 text-black'
+                                            : 'bg-zinc-800 text-white hover:bg-amber-500 hover:text-black'
+                                    }`}
+                                >
+                                    {page}
+                                </button>
+                            ))}
+
+                        {/* Última página */}
+                        {currentPage < totalPages - 2 && (
+                            <>
+                                {currentPage < totalPages - 3 && <span className="text-gray-500">...</span>}
+                                <button
+                                    onClick={() => setCurrentPage(totalPages)}
+                                    className="w-10 h-10 rounded-lg bg-zinc-800 text-white hover:bg-amber-500 hover:text-black transition-all"
+                                >
+                                    {totalPages}
+                                </button>
+                            </>
+                        )}
+                    </div>
+
+                    <button
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                        className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                            currentPage === totalPages
+                                ? 'bg-zinc-800 text-gray-600 cursor-not-allowed'
+                                : 'bg-amber-500 text-black hover:bg-amber-600'
+                        }`}
+                    >
+                        Siguiente →
+                    </button>
+                </div>
+            )}
         </div>
     );
 }
