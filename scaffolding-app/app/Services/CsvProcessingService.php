@@ -22,8 +22,9 @@ class CsvProcessingService
         $latIndex = array_search('Latitude Point', $headers);
         $lngIndex = array_search('Longitude Point', $headers);
         $nameIndex = array_search('Job Number', $headers);
-        $addressIndex = array_search('House Number', $headers);
+        $boroughIndex = array_search('Borough Name', $headers);
         $streetIndex = array_search('Street Name', $headers);
+        $houseIndex = array_search('House Number', $headers);
         $statusIndex = array_search('Current Job Status', $headers);
 
         $statusMap = [
@@ -52,8 +53,18 @@ class CsvProcessingService
                 }
 
                 $address = '';
-                if (!empty($row[$addressIndex]) && !empty($row[$streetIndex])) {
-                    $address = trim($row[$addressIndex]) . ' ' . trim($row[$streetIndex]);
+                $addressParts = [];
+                if (!empty($row[$houseIndex])) {
+                    $addressParts[] = trim($row[$houseIndex]);
+                }
+                if (!empty($row[$streetIndex])) {
+                    $addressParts[] = trim($row[$streetIndex]);
+                }
+                if (!empty($row[$boroughIndex])) {
+                    $addressParts[] = trim($row[$boroughIndex]);
+                }
+                if (!empty($addressParts)) {
+                    $address = implode(', ', $addressParts);
                 }
 
                 $name = !empty($row[$nameIndex]) ? $row[$nameIndex] : 'Unknown';
@@ -138,8 +149,31 @@ class CsvProcessingService
                     ? $row[$mapping['name']]
                     : 'Unknown';
 
+                // Construir dirección desde columnas individuales o desde campo address
                 $address = '';
-                if (isset($mapping['address']) && isset($row[$mapping['address']])) {
+                $addressParts = [];
+
+                // Buscar House Number, Street Name, Borough Name en headers
+                $houseIndex = array_search('House Number', $headers);
+                $streetIndex = array_search('Street Name', $headers);
+                $boroughIndex = array_search('Borough Name', $headers);
+
+                if ($houseIndex !== false && !empty($row[$houseIndex])) {
+                    $addressParts[] = trim($row[$houseIndex]);
+                }
+                if ($streetIndex !== false && !empty($row[$streetIndex])) {
+                    $addressParts[] = trim($row[$streetIndex]);
+                }
+                if ($boroughIndex !== false && !empty($row[$boroughIndex])) {
+                    $addressParts[] = trim($row[$boroughIndex]);
+                }
+
+                // Si se encontraron partes de dirección, concatenarlas
+                if (!empty($addressParts)) {
+                    $address = implode(', ', $addressParts);
+                }
+                // Si no, buscar en el mapping si hay un campo address mapeado
+                else if (isset($mapping['address']) && isset($row[$mapping['address']])) {
                     $address = $row[$mapping['address']];
                 }
 

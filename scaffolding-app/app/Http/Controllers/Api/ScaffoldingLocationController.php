@@ -216,7 +216,7 @@ class ScaffoldingLocationController extends Controller
             'name' => ['name', 'job number', 'job_number', 'location', 'location_name', 'site_name', 'site'],
             'latitude' => ['latitude', 'lat', 'latitude point', 'latitude_point'],
             'longitude' => ['longitude', 'lng', 'lon', 'long', 'longitude point', 'longitude_point'],
-            'address' => ['address', 'full address', 'full_address', 'street', 'location_address'],
+            'address' => ['address', 'full address', 'full_address', 'street', 'location_address', 'house number', 'street name', 'borough name'],
             'status' => ['status', 'current job status', 'current_job_status', 'job_status', 'state'],
             'notes' => ['notes', 'note', 'comments', 'comment', 'description', 'remarks']
         ];

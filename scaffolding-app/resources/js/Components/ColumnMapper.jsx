@@ -1,7 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function ColumnMapper({ csvHeaders, dbColumns, autoMapping, onConfirm, onCancel }) {
     const [mapping, setMapping] = useState(autoMapping);
+
+    // Actualizar el mapping cuando cambie el autoMapping (nuevo archivo)
+    useEffect(() => {
+        setMapping(autoMapping);
+    }, [autoMapping]);
+
+    // Bloquear scroll del body cuando el modal está abierto
+    useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, []);
 
     const handleMappingChange = (dbColumn, csvIndex) => {
         setMapping(prev => ({

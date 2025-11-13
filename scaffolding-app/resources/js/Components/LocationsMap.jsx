@@ -1,4 +1,5 @@
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import { useEffect, useState, useMemo } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -18,7 +19,7 @@ function FitBounds({ locations }) {
     useEffect(() => {
         if (locations.length > 0) {
             const bounds = locations.map(loc => [parseFloat(loc.latitude), parseFloat(loc.longitude)]);
-            map.fitBounds(bounds, { padding: [50, 50] });
+            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
         }
     }, [locations, map]);
 
@@ -82,6 +83,42 @@ export default function LocationsMap({ locations }) {
     const defaultCenter = [39.8283, -98.5795];
     const defaultZoom = 4;
 
+    // Crear icono de cluster personalizado
+    const createClusterCustomIcon = (cluster) => {
+        const count = cluster.getChildCount();
+        let size = 40;
+        let className = 'custom-cluster-icon';
+
+        if (count < 10) {
+            size = 40;
+        } else if (count < 100) {
+            size = 50;
+        } else if (count < 1000) {
+            size = 60;
+        } else {
+            size = 70;
+        }
+
+        return L.divIcon({
+            html: `<div style="
+                width: ${size}px;
+                height: ${size}px;
+                background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+                border: 3px solid white;
+                border-radius: 50%;
+                box-shadow: 0 3px 12px rgba(0,0,0,0.4);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: ${size * 0.35}px;
+                font-weight: bold;
+                color: white;
+            ">${count}</div>`,
+            className: className,
+            iconSize: L.point(size, size, true),
+        });
+    };
+
     const getStatusIcon = (location) => {
         let color;
         switch(location.status) {
@@ -118,12 +155,6 @@ export default function LocationsMap({ locations }) {
                 border: 3px solid white;
                 border-radius: 50%;
                 box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: ${size * 0.4}px;
-                font-weight: bold;
-                color: white;
             "></div>`,
             iconSize: [size, size],
             iconAnchor: [size / 2, size / 2],
@@ -228,44 +259,19 @@ export default function LocationsMap({ locations }) {
 
             {/* Leyenda */}
             <div className="mb-4 p-4 bg-zinc-950 rounded-lg border border-zinc-800">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <div className="text-gray-400 text-xs font-semibold mb-2 uppercase">Estado</div>
-                        <div className="flex items-center gap-4 text-sm">
-                            <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 bg-emerald-500 rounded-full border-2 border-white"></div>
-                                <span className="text-gray-300">Activos</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 bg-amber-500 rounded-full border-2 border-white"></div>
-                                <span className="text-gray-300">Mantenimiento</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 bg-gray-500 rounded-full border-2 border-white"></div>
-                                <span className="text-gray-300">Inactivos</span>
-                            </div>
-                        </div>
+                <div className="text-gray-400 text-xs font-semibold mb-2 uppercase">Estado</div>
+                <div className="flex items-center gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-emerald-500 rounded-full border-2 border-white"></div>
+                        <span className="text-gray-300">Activos</span>
                     </div>
-                    <div>
-                        <div className="text-gray-400 text-xs font-semibold mb-2 uppercase">Antigüedad (tamaño)</div>
-                        <div className="flex items-center gap-3 text-sm">
-                            <div className="flex items-center gap-1">
-                                <div className="w-2 h-2 bg-white rounded-full"></div>
-                                <span className="text-gray-300">≤30d</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <div className="w-3 h-3 bg-white rounded-full"></div>
-                                <span className="text-gray-300">31-90d</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <div className="w-4 h-4 bg-white rounded-full"></div>
-                                <span className="text-gray-300">91-365d</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <div className="w-5 h-5 bg-white rounded-full"></div>
-                                <span className="text-gray-300">&gt;365d</span>
-                            </div>
-                        </div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-amber-500 rounded-full border-2 border-white"></div>
+                        <span className="text-gray-300">Mantenimiento</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-gray-500 rounded-full border-2 border-white"></div>
+                        <span className="text-gray-300">Inactivos</span>
                     </div>
                 </div>
             </div>
@@ -292,55 +298,67 @@ export default function LocationsMap({ locations }) {
                         zoom={defaultZoom}
                         style={{ height: '100%', width: '100%' }}
                         scrollWheelZoom={true}
+                        preferCanvas={true}
                     >
                         <TileLayer
                             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            maxZoom={19}
                         />
 
-                        {filteredLocations.map((location) => (
-                            <Marker
-                                key={location.id}
-                                position={[parseFloat(location.latitude), parseFloat(location.longitude)]}
-                                icon={getStatusIcon(location)}
-                            >
-                                <Popup>
-                                    <div className="p-2" style={{ minWidth: '200px' }}>
-                                        <div className="font-bold text-lg mb-2">{location.name}</div>
+                        <MarkerClusterGroup
+                            chunkedLoading
+                            iconCreateFunction={createClusterCustomIcon}
+                            spiderfyOnMaxZoom={true}
+                            showCoverageOnHover={false}
+                            zoomToBoundsOnClick={true}
+                            maxClusterRadius={50}
+                            disableClusteringAtZoom={16}
+                        >
+                            {filteredLocations.map((location) => (
+                                <Marker
+                                    key={location.id}
+                                    position={[parseFloat(location.latitude), parseFloat(location.longitude)]}
+                                    icon={getStatusIcon(location)}
+                                >
+                                    <Popup>
+                                        <div className="p-2" style={{ minWidth: '200px' }}>
+                                            <div className="font-bold text-lg mb-2">{location.name}</div>
 
-                                        {location.address && (
-                                            <div className="text-sm text-gray-600 mb-2">
-                                                📍 {location.address}
+                                            {location.address && (
+                                                <div className="text-sm text-gray-600 mb-2">
+                                                    📍 {location.address}
+                                                </div>
+                                            )}
+
+                                            <div className="text-xs text-gray-500 mb-2 font-mono">
+                                                {location.latitude}, {location.longitude}
                                             </div>
-                                        )}
 
-                                        <div className="text-xs text-gray-500 mb-2 font-mono">
-                                            {location.latitude}, {location.longitude}
-                                        </div>
-
-                                        <div className="mb-2">
-                                            <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
-                                                location.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
-                                                location.status === 'maintenance' ? 'bg-amber-100 text-amber-700' :
-                                                'bg-gray-100 text-gray-700'
-                                            }`}>
-                                                {getStatusLabel(location.status)}
-                                            </span>
-                                        </div>
-
-                                        <div className="text-xs text-gray-600 mb-2">
-                                            ⏱️ {getAgeInDays(location.created_at)} días de antigüedad
-                                        </div>
-
-                                        {location.notes && (
-                                            <div className="text-sm text-gray-600 mt-2 border-t pt-2">
-                                                📝 {location.notes}
+                                            <div className="mb-2">
+                                                <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
+                                                    location.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
+                                                    location.status === 'maintenance' ? 'bg-amber-100 text-amber-700' :
+                                                    'bg-gray-100 text-gray-700'
+                                                }`}>
+                                                    {getStatusLabel(location.status)}
+                                                </span>
                                             </div>
-                                        )}
-                                    </div>
-                                </Popup>
-                            </Marker>
-                        ))}
+
+                                            <div className="text-xs text-gray-600 mb-2">
+                                                ⏱️ {getAgeInDays(location.created_at)} días de antigüedad
+                                            </div>
+
+                                            {location.notes && (
+                                                <div className="text-sm text-gray-600 mt-2 border-t pt-2">
+                                                    📝 {location.notes}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </Popup>
+                                </Marker>
+                            ))}
+                        </MarkerClusterGroup>
 
                         <FitBounds locations={filteredLocations} />
                     </MapContainer>
