@@ -20,6 +20,10 @@
   ],
   "tags": [
     {
+      "name": "Authentication",
+      "description": "Autenticación de usuarios y generación de tokens"
+    },
+    {
       "name": "Scaffolds",
       "description": "Endpoint principal de andamios con filtros geográficos"
     },
@@ -37,11 +41,213 @@
     }
   ],
   "paths": {
+    "/register": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Registrar nuevo usuario",
+        "description": "Crea un nuevo usuario y devuelve un token de acceso",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "email",
+                  "password",
+                  "password_confirmation"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "John Doe"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "john@example.com"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password",
+                    "minimum": 8,
+                    "example": "password123"
+                  },
+                  "password_confirmation": {
+                    "type": "string",
+                    "format": "password",
+                    "example": "password123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Usuario registrado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error de validación",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/login": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Iniciar sesión",
+        "description": "Autentica un usuario y devuelve un token de acceso",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "john@example.com"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password",
+                    "example": "password123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login exitoso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Credenciales incorrectas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/logout": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Cerrar sesión",
+        "description": "Revoca el token actual del usuario",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Logout exitoso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Logout successful"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado"
+          }
+        }
+      }
+    },
+    "/me": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Obtener usuario autenticado",
+        "description": "Devuelve la información del usuario actualmente autenticado",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Información del usuario",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado"
+          }
+        }
+      }
+    },
     "/scaffolds": {
       "get": {
-        "tags": ["Scaffolds"],
+        "tags": [
+          "Scaffolds"
+        ],
         "summary": "Listar andamios con filtros geográficos",
         "description": "Obtiene una lista de andamios. Soporta filtros por radio (proximidad) o bounding box (área rectangular)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "lat",
@@ -53,7 +259,7 @@
               "format": "double",
               "minimum": -90,
               "maximum": 90,
-              "example": 40.7580
+              "example": 40.758
             }
           },
           {
@@ -92,7 +298,7 @@
               "format": "double",
               "minimum": -90,
               "maximum": 90,
-              "example": 40.70
+              "example": 40.7
             }
           },
           {
@@ -105,7 +311,7 @@
               "format": "double",
               "minimum": -90,
               "maximum": 90,
-              "example": 40.80
+              "example": 40.8
             }
           },
           {
@@ -152,15 +358,15 @@
                     "value": [
                       {
                         "id": 1,
-                        "lat": 40.7580,
+                        "lat": 40.758,
                         "lng": -73.9855,
                         "address": "123 Main St",
                         "distance": 0.0
                       },
                       {
                         "id": 2,
-                        "lat": 40.7600,
-                        "lng": -73.9800,
+                        "lat": 40.76,
+                        "lng": -73.98,
                         "address": "456 Broadway",
                         "distance": 0.52
                       }
@@ -171,7 +377,7 @@
                     "value": [
                       {
                         "id": 1,
-                        "lat": 40.7580,
+                        "lat": 40.758,
                         "lng": -73.9855,
                         "address": "123 Main St"
                       }
@@ -196,9 +402,16 @@
     },
     "/scaffolding_locations": {
       "get": {
-        "tags": ["Scaffolding Locations"],
+        "tags": [
+          "Scaffolding Locations"
+        ],
         "summary": "Listar todas las ubicaciones",
         "description": "Obtiene una lista completa de ubicaciones de andamios con todos los detalles",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "Lista de ubicaciones",
@@ -216,9 +429,16 @@
         }
       },
       "post": {
-        "tags": ["Scaffolding Locations"],
+        "tags": [
+          "Scaffolding Locations"
+        ],
         "summary": "Crear nueva ubicación",
         "description": "Crea una nueva ubicación de andamio",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -255,7 +475,9 @@
     },
     "/scaffolding_locations/{id}": {
       "get": {
-        "tags": ["Scaffolding Locations"],
+        "tags": [
+          "Scaffolding Locations"
+        ],
         "summary": "Obtener ubicación por ID",
         "description": "Obtiene los detalles de una ubicación específica",
         "parameters": [
@@ -283,10 +505,17 @@
           "404": {
             "description": "Ubicación no encontrada"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "put": {
-        "tags": ["Scaffolding Locations"],
+        "tags": [
+          "Scaffolding Locations"
+        ],
         "summary": "Actualizar ubicación",
         "description": "Actualiza una ubicación existente",
         "parameters": [
@@ -334,10 +563,17 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "delete": {
-        "tags": ["Scaffolding Locations"],
+        "tags": [
+          "Scaffolding Locations"
+        ],
         "summary": "Eliminar ubicación",
         "description": "Elimina una ubicación de andamio",
         "parameters": [
@@ -358,12 +594,19 @@
           "404": {
             "description": "Ubicación no encontrada"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/stats": {
       "get": {
-        "tags": ["Statistics"],
+        "tags": [
+          "Statistics"
+        ],
         "summary": "Obtener estadísticas",
         "description": "Obtiene estadísticas generales del sistema",
         "responses": {
@@ -377,12 +620,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/analyze-csv": {
       "post": {
-        "tags": ["CSV Import"],
+        "tags": [
+          "CSV Import"
+        ],
         "summary": "Analizar archivo CSV",
         "description": "Analiza las columnas de un archivo CSV y sugiere un mapeo automático",
         "requestBody": {
@@ -398,7 +648,9 @@
                     "description": "Archivo CSV a analizar"
                   }
                 },
-                "required": ["file"]
+                "required": [
+                  "file"
+                ]
               }
             }
           }
@@ -417,12 +669,19 @@
           "422": {
             "description": "Archivo inválido"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/upload-with-mapping": {
       "post": {
-        "tags": ["CSV Import"],
+        "tags": [
+          "CSV Import"
+        ],
         "summary": "Subir CSV con mapeo personalizado",
         "description": "Importa datos desde un archivo CSV con mapeo de columnas personalizado",
         "requestBody": {
@@ -443,7 +702,10 @@
                     "example": "{\"name\": 0, \"latitude\": 1, \"longitude\": 2}"
                   }
                 },
-                "required": ["file", "mapping"]
+                "required": [
+                  "file",
+                  "mapping"
+                ]
               }
             }
           }
@@ -462,12 +724,19 @@
           "500": {
             "description": "Error al procesar el archivo"
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/import-logs": {
       "get": {
-        "tags": ["CSV Import"],
+        "tags": [
+          "CSV Import"
+        ],
         "summary": "Historial de importaciones",
         "description": "Obtiene el historial de las últimas 50 importaciones",
         "responses": {
@@ -484,7 +753,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     }
   },
@@ -500,7 +774,7 @@
           "lat": {
             "type": "number",
             "format": "double",
-            "example": 40.7580
+            "example": 40.758
           },
           "lng": {
             "type": "number",
@@ -533,7 +807,7 @@
           "latitude": {
             "type": "number",
             "format": "double",
-            "example": 40.7580
+            "example": 40.758
           },
           "longitude": {
             "type": "number",
@@ -546,7 +820,11 @@
           },
           "status": {
             "type": "string",
-            "enum": ["active", "inactive", "maintenance"],
+            "enum": [
+              "active",
+              "inactive",
+              "maintenance"
+            ],
             "example": "active"
           },
           "notes": {
@@ -568,7 +846,11 @@
       },
       "ScaffoldingLocationInput": {
         "type": "object",
-        "required": ["name", "latitude", "longitude"],
+        "required": [
+          "name",
+          "latitude",
+          "longitude"
+        ],
         "properties": {
           "name": {
             "type": "string",
@@ -577,7 +859,7 @@
           "latitude": {
             "type": "number",
             "format": "double",
-            "example": 40.7580
+            "example": 40.758
           },
           "longitude": {
             "type": "number",
@@ -591,7 +873,11 @@
           },
           "status": {
             "type": "string",
-            "enum": ["active", "inactive", "maintenance"],
+            "enum": [
+              "active",
+              "inactive",
+              "maintenance"
+            ],
             "example": "active"
           },
           "notes": {
@@ -611,7 +897,7 @@
           "latitude": {
             "type": "number",
             "format": "double",
-            "example": 40.7580
+            "example": 40.758
           },
           "longitude": {
             "type": "number",
@@ -625,7 +911,11 @@
           },
           "status": {
             "type": "string",
-            "enum": ["active", "inactive", "maintenance"],
+            "enum": [
+              "active",
+              "inactive",
+              "maintenance"
+            ],
             "example": "active"
           },
           "notes": {
@@ -673,7 +963,11 @@
             "items": {
               "type": "string"
             },
-            "example": ["Job Number", "Latitude Point", "Longitude Point"]
+            "example": [
+              "Job Number",
+              "Latitude Point",
+              "Longitude Point"
+            ]
           },
           "db_columns": {
             "type": "array",
@@ -736,7 +1030,10 @@
           },
           "status": {
             "type": "string",
-            "enum": ["completed", "failed"],
+            "enum": [
+              "completed",
+              "failed"
+            ],
             "example": "completed"
           },
           "total_records": {
@@ -777,11 +1074,82 @@
               }
             },
             "example": {
-              "lat": ["The lat must be between -90 and 90."],
-              "radius": ["The radius must be at least 0.1."]
+              "lat": [
+                "The lat must be between -90 and 90."
+              ],
+              "radius": [
+                "The radius must be at least 0.1."
+              ]
             }
           }
         }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "John Doe"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "john@example.com"
+          },
+          "email_verified_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": "2025-01-17T10:00:00Z"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2025-01-17T10:00:00Z"
+          }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "Login successful"
+          },
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "example": 1
+              },
+              "name": {
+                "type": "string",
+                "example": "John Doe"
+              },
+              "email": {
+                "type": "string",
+                "example": "john@example.com"
+              }
+            }
+          },
+          "token": {
+            "type": "string",
+            "example": "1|AbCdEf..."
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Token",
+        "description": "Ingrese el token de autenticación obtenido del endpoint /login"
       }
     }
   }
