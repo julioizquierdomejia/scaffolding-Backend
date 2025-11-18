@@ -11,8 +11,8 @@ Route::prefix('v1')->group(function () {
     Route::post('/login', [ApiAuthController::class, 'login']);
 });
 
-// Protected routes (require authentication)
-Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
+// Protected routes (require authentication via session or token)
+Route::prefix('v1')->middleware(['auth:sanctum,web'])->group(function () {
     // Auth routes
     Route::post('/logout', [ApiAuthController::class, 'logout']);
     Route::get('/me', [ApiAuthController::class, 'me']);
