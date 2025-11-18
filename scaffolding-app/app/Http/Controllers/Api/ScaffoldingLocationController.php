@@ -25,6 +25,56 @@ class ScaffoldingLocationController extends Controller
         return response()->json($locations);
     }
 
+    public function scaffolds(Request $request)
+    {
+        // Validar parámetros de filtros geográficos
+        $validated = $request->validate([
+            'lat' => 'nullable|numeric|between:-90,90',
+            'lng' => 'nullable|numeric|between:-180,180',
+            'radius' => 'nullable|numeric|min:0.1|max:10000',
+            'minLat' => 'nullable|numeric|between:-90,90',
+            'maxLat' => 'nullable|numeric|between:-90,90',
+            'minLng' => 'nullable|numeric|between:-180,180',
+            'maxLng' => 'nullable|numeric|between:-180,180',
+        ]);
+
+        $query = ScaffoldingLocation::select('id', 'latitude as lat', 'longitude as lng', 'address');
+
+        // Filtro por bounding box (minLat, maxLat, minLng, maxLng)
+        if ($request->has(['minLat', 'maxLat', 'minLng', 'maxLng'])) {
+            $query->whereBetween('latitude', [$request->minLat, $request->maxLat])
+                  ->whereBetween('longitude', [$request->minLng, $request->maxLng]);
+        }
+
+        // Filtro por radio (lat, lng, radius en km)
+        if ($request->has(['lat', 'lng', 'radius'])) {
+            $lat = $request->lat;
+            $lng = $request->lng;
+            $radius = $request->radius;
+
+            // Fórmula de Haversine para calcular distancia
+            // Radio de la Tierra en km
+            $earthRadius = 6371;
+
+            $query->selectRaw(
+                "id, latitude as lat, longitude as lng, address,
+                ( ? * acos(
+                    cos(radians(?)) * cos(radians(latitude)) *
+                    cos(radians(longitude) - radians(?)) +
+                    sin(radians(?)) * sin(radians(latitude))
+                )) AS distance",
+                [$earthRadius, $lat, $lng, $lat]
+            )
+            ->having('distance', '<=', $radius)
+            ->orderBy('distance', 'asc');
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        $scaffolds = $query->get();
+        return response()->json($scaffolds);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([

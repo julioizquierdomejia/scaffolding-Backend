@@ -1,0 +1,360 @@
+{
+	"info": {
+		"_postman_id": "scaffolding-api-2025",
+		"name": "Scaffolding Management API",
+		"description": "Colección completa de la API de gestión de andamios con filtros geográficos.\n\n## Características principales:\n- Filtros geográficos por radio y bounding box\n- Operaciones CRUD completas\n- Importación de CSV con mapeo automático\n- Estadísticas en tiempo real\n\n## Servidor de Producción:\n`http://157.245.189.216/api/v1`",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Scaffolds (Filtros Geográficos)",
+			"item": [
+				{
+					"name": "GET Todos los scaffolds (sin filtros)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/scaffolds",
+							"host": ["{{base_url}}"],
+							"path": ["scaffolds"]
+						},
+						"description": "Obtiene todos los andamios sin filtros. Devuelve solo: id, lat, lng, address"
+					},
+					"response": []
+				},
+				{
+					"name": "GET Scaffolds por radio (5 km)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/scaffolds?lat=40.7580&lng=-73.9855&radius=5",
+							"host": ["{{base_url}}"],
+							"path": ["scaffolds"],
+							"query": [
+								{
+									"key": "lat",
+									"value": "40.7580",
+									"description": "Latitud del punto central"
+								},
+								{
+									"key": "lng",
+									"value": "-73.9855",
+									"description": "Longitud del punto central"
+								},
+								{
+									"key": "radius",
+									"value": "5",
+									"description": "Radio en kilómetros"
+								}
+							]
+						},
+						"description": "Busca andamios en un radio de 5 km desde Times Square, NYC. Incluye el campo 'distance' en km y ordena por distancia."
+					},
+					"response": []
+				},
+				{
+					"name": "GET Scaffolds por radio (1 km)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/scaffolds?lat=40.7580&lng=-73.9855&radius=1",
+							"host": ["{{base_url}}"],
+							"path": ["scaffolds"],
+							"query": [
+								{
+									"key": "lat",
+									"value": "40.7580"
+								},
+								{
+									"key": "lng",
+									"value": "-73.9855"
+								},
+								{
+									"key": "radius",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Búsqueda muy cercana - Radio de 1 km"
+					},
+					"response": []
+				},
+				{
+					"name": "GET Scaffolds por bounding box (Manhattan)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/scaffolds?minLat=40.70&maxLat=40.80&minLng=-74.02&maxLng=-73.93",
+							"host": ["{{base_url}}"],
+							"path": ["scaffolds"],
+							"query": [
+								{
+									"key": "minLat",
+									"value": "40.70",
+									"description": "Latitud mínima"
+								},
+								{
+									"key": "maxLat",
+									"value": "40.80",
+									"description": "Latitud máxima"
+								},
+								{
+									"key": "minLng",
+									"value": "-74.02",
+									"description": "Longitud mínima"
+								},
+								{
+									"key": "maxLng",
+									"value": "-73.93",
+									"description": "Longitud máxima"
+								}
+							]
+						},
+						"description": "Filtra andamios en un área rectangular de Manhattan"
+					},
+					"response": []
+				},
+				{
+					"name": "GET Scaffolds por bounding box (área pequeña)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/scaffolds?minLat=40.75&maxLat=40.77&minLng=-74.00&maxLng=-73.98",
+							"host": ["{{base_url}}"],
+							"path": ["scaffolds"],
+							"query": [
+								{
+									"key": "minLat",
+									"value": "40.75"
+								},
+								{
+									"key": "maxLat",
+									"value": "40.77"
+								},
+								{
+									"key": "minLng",
+									"value": "-74.00"
+								},
+								{
+									"key": "maxLng",
+									"value": "-73.98"
+								}
+							]
+						},
+						"description": "Filtra andamios en un área rectangular pequeña"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoint principal de scaffolds con filtros geográficos avanzados (radio y bounding box)"
+		},
+		{
+			"name": "Scaffolding Locations (CRUD)",
+			"item": [
+				{
+					"name": "GET Todas las ubicaciones",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/scaffolding_locations",
+							"host": ["{{base_url}}"],
+							"path": ["scaffolding_locations"]
+						},
+						"description": "Obtiene todas las ubicaciones con información completa (todos los campos)"
+					},
+					"response": []
+				},
+				{
+					"name": "GET Ubicación por ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/scaffolding_locations/1",
+							"host": ["{{base_url}}"],
+							"path": ["scaffolding_locations", "1"]
+						},
+						"description": "Obtiene los detalles de una ubicación específica por su ID"
+					},
+					"response": []
+				},
+				{
+					"name": "POST Crear ubicación",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Nueva ubicación de prueba\",\n    \"latitude\": 40.7580,\n    \"longitude\": -73.9855,\n    \"address\": \"123 Test Street, New York, NY\",\n    \"status\": \"active\",\n    \"notes\": \"Ubicación creada desde Postman\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/scaffolding_locations",
+							"host": ["{{base_url}}"],
+							"path": ["scaffolding_locations"]
+						},
+						"description": "Crea una nueva ubicación de andamio"
+					},
+					"response": []
+				},
+				{
+					"name": "PUT Actualizar ubicación",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Ubicación actualizada\",\n    \"latitude\": 40.7600,\n    \"longitude\": -73.9800,\n    \"address\": \"456 Updated Ave, New York, NY\",\n    \"status\": \"maintenance\",\n    \"notes\": \"Actualizada desde Postman\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/scaffolding_locations/1",
+							"host": ["{{base_url}}"],
+							"path": ["scaffolding_locations", "1"]
+						},
+						"description": "Actualiza una ubicación existente"
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE Eliminar ubicación",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/scaffolding_locations/1",
+							"host": ["{{base_url}}"],
+							"path": ["scaffolding_locations", "1"]
+						},
+						"description": "Elimina una ubicación de andamio"
+					},
+					"response": []
+				}
+			],
+			"description": "Operaciones CRUD completas sobre ubicaciones de andamios"
+		},
+		{
+			"name": "Statistics",
+			"item": [
+				{
+					"name": "GET Estadísticas del sistema",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/stats",
+							"host": ["{{base_url}}"],
+							"path": ["stats"]
+						},
+						"description": "Obtiene estadísticas generales del sistema:\n- Total de ubicaciones\n- Sitios activos\n- Sitios inactivos\n- Sitios en mantenimiento\n- Estado de la API\n- Cobertura"
+					},
+					"response": []
+				}
+			],
+			"description": "Estadísticas y métricas del sistema"
+		},
+		{
+			"name": "CSV Import",
+			"item": [
+				{
+					"name": "POST Analizar CSV",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": [],
+									"description": "Archivo CSV a analizar"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/analyze-csv",
+							"host": ["{{base_url}}"],
+							"path": ["analyze-csv"]
+						},
+						"description": "Analiza las columnas de un archivo CSV y devuelve:\n- Headers del CSV\n- Columnas de la base de datos\n- Mapeo automático sugerido\n- Si requiere mapeo manual"
+					},
+					"response": []
+				},
+				{
+					"name": "POST Upload con mapeo personalizado",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": [],
+									"description": "Archivo CSV a importar"
+								},
+								{
+									"key": "mapping",
+									"value": "{\"name\": 0, \"latitude\": 1, \"longitude\": 2, \"address\": 3, \"status\": 4, \"notes\": 5}",
+									"type": "text",
+									"description": "JSON con el mapeo de columnas"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/upload-with-mapping",
+							"host": ["{{base_url}}"],
+							"path": ["upload-with-mapping"]
+						},
+						"description": "Importa datos desde un archivo CSV usando un mapeo personalizado de columnas.\n\nEl mapeo indica qué índice de columna del CSV corresponde a cada campo de la BD."
+					},
+					"response": []
+				},
+				{
+					"name": "GET Historial de importaciones",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/import-logs",
+							"host": ["{{base_url}}"],
+							"path": ["import-logs"]
+						},
+						"description": "Obtiene el historial de las últimas 50 importaciones de CSV con:\n- Nombre del archivo\n- Estado (completed/failed)\n- Total de registros\n- Registros procesados\n- Registros fallidos\n- Fechas de inicio y fin"
+					},
+					"response": []
+				}
+			],
+			"description": "Importación de datos desde archivos CSV con mapeo automático y manual"
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://157.245.189.216/api/v1",
+			"type": "string"
+		},
+		{
+			"key": "base_url_local",
+			"value": "http://localhost:8000/api/v1",
+			"type": "string",
+			"disabled": true
+		}
+	]
+}

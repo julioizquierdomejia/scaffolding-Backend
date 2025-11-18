@@ -1,0 +1,788 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Scaffolding Management API",
+    "description": "API REST para gestión de ubicaciones de andamios con filtros geográficos avanzados",
+    "version": "1.0.0",
+    "contact": {
+      "email": "support@scaffolding.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://157.245.189.216/api/v1",
+      "description": "Servidor de Producción"
+    },
+    {
+      "url": "http://localhost:8000/api/v1",
+      "description": "Servidor de Desarrollo"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Scaffolds",
+      "description": "Endpoint principal de andamios con filtros geográficos"
+    },
+    {
+      "name": "Scaffolding Locations",
+      "description": "Operaciones CRUD sobre ubicaciones de andamios"
+    },
+    {
+      "name": "Statistics",
+      "description": "Estadísticas y métricas del sistema"
+    },
+    {
+      "name": "CSV Import",
+      "description": "Importación de datos desde archivos CSV"
+    }
+  ],
+  "paths": {
+    "/scaffolds": {
+      "get": {
+        "tags": ["Scaffolds"],
+        "summary": "Listar andamios con filtros geográficos",
+        "description": "Obtiene una lista de andamios. Soporta filtros por radio (proximidad) o bounding box (área rectangular)",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "description": "Latitud del punto central para filtro por radio",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "format": "double",
+              "minimum": -90,
+              "maximum": 90,
+              "example": 40.7580
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "description": "Longitud del punto central para filtro por radio",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "format": "double",
+              "minimum": -180,
+              "maximum": 180,
+              "example": -73.9855
+            }
+          },
+          {
+            "name": "radius",
+            "in": "query",
+            "description": "Radio de búsqueda en kilómetros (requiere lat y lng)",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "format": "double",
+              "minimum": 0.1,
+              "maximum": 10000,
+              "example": 5
+            }
+          },
+          {
+            "name": "minLat",
+            "in": "query",
+            "description": "Latitud mínima del rectángulo (bounding box)",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "format": "double",
+              "minimum": -90,
+              "maximum": 90,
+              "example": 40.70
+            }
+          },
+          {
+            "name": "maxLat",
+            "in": "query",
+            "description": "Latitud máxima del rectángulo (bounding box)",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "format": "double",
+              "minimum": -90,
+              "maximum": 90,
+              "example": 40.80
+            }
+          },
+          {
+            "name": "minLng",
+            "in": "query",
+            "description": "Longitud mínima del rectángulo (bounding box)",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "format": "double",
+              "minimum": -180,
+              "maximum": 180,
+              "example": -74.02
+            }
+          },
+          {
+            "name": "maxLng",
+            "in": "query",
+            "description": "Longitud máxima del rectángulo (bounding box)",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "format": "double",
+              "minimum": -180,
+              "maximum": 180,
+              "example": -73.93
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de andamios",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScaffoldSimple"
+                  }
+                },
+                "examples": {
+                  "withRadius": {
+                    "summary": "Con filtro por radio",
+                    "value": [
+                      {
+                        "id": 1,
+                        "lat": 40.7580,
+                        "lng": -73.9855,
+                        "address": "123 Main St",
+                        "distance": 0.0
+                      },
+                      {
+                        "id": 2,
+                        "lat": 40.7600,
+                        "lng": -73.9800,
+                        "address": "456 Broadway",
+                        "distance": 0.52
+                      }
+                    ]
+                  },
+                  "withBoundingBox": {
+                    "summary": "Con filtro por bounding box",
+                    "value": [
+                      {
+                        "id": 1,
+                        "lat": 40.7580,
+                        "lng": -73.9855,
+                        "address": "123 Main St"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error de validación",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scaffolding_locations": {
+      "get": {
+        "tags": ["Scaffolding Locations"],
+        "summary": "Listar todas las ubicaciones",
+        "description": "Obtiene una lista completa de ubicaciones de andamios con todos los detalles",
+        "responses": {
+          "200": {
+            "description": "Lista de ubicaciones",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScaffoldingLocation"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Scaffolding Locations"],
+        "summary": "Crear nueva ubicación",
+        "description": "Crea una nueva ubicación de andamio",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScaffoldingLocationInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Ubicación creada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScaffoldingLocation"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error de validación",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scaffolding_locations/{id}": {
+      "get": {
+        "tags": ["Scaffolding Locations"],
+        "summary": "Obtener ubicación por ID",
+        "description": "Obtiene los detalles de una ubicación específica",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID de la ubicación",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detalles de la ubicación",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScaffoldingLocation"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ubicación no encontrada"
+          }
+        }
+      },
+      "put": {
+        "tags": ["Scaffolding Locations"],
+        "summary": "Actualizar ubicación",
+        "description": "Actualiza una ubicación existente",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID de la ubicación",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScaffoldingLocationUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ubicación actualizada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScaffoldingLocation"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ubicación no encontrada"
+          },
+          "422": {
+            "description": "Error de validación",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Scaffolding Locations"],
+        "summary": "Eliminar ubicación",
+        "description": "Elimina una ubicación de andamio",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID de la ubicación",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Ubicación eliminada exitosamente"
+          },
+          "404": {
+            "description": "Ubicación no encontrada"
+          }
+        }
+      }
+    },
+    "/stats": {
+      "get": {
+        "tags": ["Statistics"],
+        "summary": "Obtener estadísticas",
+        "description": "Obtiene estadísticas generales del sistema",
+        "responses": {
+          "200": {
+            "description": "Estadísticas del sistema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Statistics"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analyze-csv": {
+      "post": {
+        "tags": ["CSV Import"],
+        "summary": "Analizar archivo CSV",
+        "description": "Analiza las columnas de un archivo CSV y sugiere un mapeo automático",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Archivo CSV a analizar"
+                  }
+                },
+                "required": ["file"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Análisis del CSV completado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CsvAnalysis"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Archivo inválido"
+          }
+        }
+      }
+    },
+    "/upload-with-mapping": {
+      "post": {
+        "tags": ["CSV Import"],
+        "summary": "Subir CSV con mapeo personalizado",
+        "description": "Importa datos desde un archivo CSV con mapeo de columnas personalizado",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Archivo CSV a importar"
+                  },
+                  "mapping": {
+                    "type": "string",
+                    "description": "JSON con el mapeo de columnas",
+                    "example": "{\"name\": 0, \"latitude\": 1, \"longitude\": 2}"
+                  }
+                },
+                "required": ["file", "mapping"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Archivo importado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResult"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error al procesar el archivo"
+          }
+        }
+      }
+    },
+    "/import-logs": {
+      "get": {
+        "tags": ["CSV Import"],
+        "summary": "Historial de importaciones",
+        "description": "Obtiene el historial de las últimas 50 importaciones",
+        "responses": {
+          "200": {
+            "description": "Historial de importaciones",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImportLog"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ScaffoldSimple": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "lat": {
+            "type": "number",
+            "format": "double",
+            "example": 40.7580
+          },
+          "lng": {
+            "type": "number",
+            "format": "double",
+            "example": -73.9855
+          },
+          "address": {
+            "type": "string",
+            "example": "123 Main St, New York, NY"
+          },
+          "distance": {
+            "type": "number",
+            "format": "double",
+            "description": "Distancia en km (solo cuando se usa filtro por radio)",
+            "example": 0.52
+          }
+        }
+      },
+      "ScaffoldingLocation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "Scaffold Site 001"
+          },
+          "latitude": {
+            "type": "number",
+            "format": "double",
+            "example": 40.7580
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double",
+            "example": -73.9855
+          },
+          "address": {
+            "type": "string",
+            "example": "123 Main St, New York, NY"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "inactive", "maintenance"],
+            "example": "active"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true,
+            "example": "Under construction"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2025-01-17T10:00:00Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2025-01-17T10:00:00Z"
+          }
+        }
+      },
+      "ScaffoldingLocationInput": {
+        "type": "object",
+        "required": ["name", "latitude", "longitude"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Scaffold Site 001"
+          },
+          "latitude": {
+            "type": "number",
+            "format": "double",
+            "example": 40.7580
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double",
+            "example": -73.9855
+          },
+          "address": {
+            "type": "string",
+            "nullable": true,
+            "example": "123 Main St, New York, NY"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "inactive", "maintenance"],
+            "example": "active"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true,
+            "example": "Under construction"
+          }
+        }
+      },
+      "ScaffoldingLocationUpdate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Scaffold Site 001"
+          },
+          "latitude": {
+            "type": "number",
+            "format": "double",
+            "example": 40.7580
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double",
+            "example": -73.9855
+          },
+          "address": {
+            "type": "string",
+            "nullable": true,
+            "example": "123 Main St, New York, NY"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "inactive", "maintenance"],
+            "example": "active"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true,
+            "example": "Under construction"
+          }
+        }
+      },
+      "Statistics": {
+        "type": "object",
+        "properties": {
+          "total_locations": {
+            "type": "integer",
+            "example": 8465
+          },
+          "active_sites": {
+            "type": "integer",
+            "example": 8465
+          },
+          "inactive_sites": {
+            "type": "integer",
+            "example": 0
+          },
+          "maintenance_sites": {
+            "type": "integer",
+            "example": 0
+          },
+          "api_status": {
+            "type": "string",
+            "example": "online"
+          },
+          "coverage": {
+            "type": "number",
+            "format": "double",
+            "example": 100
+          }
+        }
+      },
+      "CsvAnalysis": {
+        "type": "object",
+        "properties": {
+          "csv_headers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["Job Number", "Latitude Point", "Longitude Point"]
+          },
+          "db_columns": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "auto_mapping": {
+            "type": "object",
+            "example": {
+              "name": 0,
+              "latitude": 1,
+              "longitude": 2
+            }
+          },
+          "requires_manual_mapping": {
+            "type": "boolean",
+            "example": false
+          }
+        }
+      },
+      "ImportResult": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "File uploaded successfully"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "processed": {
+                "type": "integer",
+                "example": 100
+              },
+              "errors": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              },
+              "upload_id": {
+                "type": "integer",
+                "example": 1
+              }
+            }
+          }
+        }
+      },
+      "ImportLog": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "filename": {
+            "type": "string",
+            "example": "locations.csv"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["completed", "failed"],
+            "example": "completed"
+          },
+          "total_records": {
+            "type": "integer",
+            "example": 100
+          },
+          "processed_records": {
+            "type": "integer",
+            "example": 98
+          },
+          "failed_records": {
+            "type": "integer",
+            "example": 2
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ValidationError": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "The given data was invalid."
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "example": {
+              "lat": ["The lat must be between -90 and 90."],
+              "radius": ["The radius must be at least 0.1."]
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -19,4 +19,5 @@ Route::prefix('v1')->middleware('web')->group(function () {
     Route::post('/upload', [ScaffoldingLocationController::class, 'uploadCsv']);
     Route::get('/stats', [ScaffoldingLocationController::class, 'stats']);
     Route::get('/import-logs', [ScaffoldingLocationController::class, 'importLogs']);
+    Route::get('/scaffolds', [ScaffoldingLocationController::class, 'scaffolds']);
 });
