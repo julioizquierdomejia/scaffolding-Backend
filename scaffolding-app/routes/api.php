@@ -12,7 +12,7 @@ Route::prefix('v1')->group(function () {
 });
 
 // Protected routes (require authentication via session or token)
-Route::prefix('v1')->middleware(['auth:sanctum,web'])->group(function () {
+Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     // Auth routes
     Route::post('/logout', [ApiAuthController::class, 'logout']);
     Route::get('/me', [ApiAuthController::class, 'me']);

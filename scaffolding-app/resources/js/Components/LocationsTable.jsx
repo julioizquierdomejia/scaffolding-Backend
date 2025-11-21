@@ -56,11 +56,11 @@ export default function LocationsTable({ locations }) {
     const getStatusLabel = (status) => {
         switch(status) {
             case 'active':
-                return 'Activo';
+                return 'Active';
             case 'inactive':
-                return 'Inactivo';
+                return 'Inactive';
             case 'maintenance':
-                return 'Mantenimiento';
+                return 'Maintenance';
             default:
                 return status || 'N/A';
         }
@@ -72,7 +72,7 @@ export default function LocationsTable({ locations }) {
                 <div className="flex-1">
                     <input
                         type="text"
-                        placeholder="🔍 Buscar por nombre o dirección..."
+                        placeholder="🔍 Search by name or address..."
                         value={searchTerm}
                         onChange={(e) => handleSearchChange(e.target.value)}
                         className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500"
@@ -84,10 +84,10 @@ export default function LocationsTable({ locations }) {
                         onChange={(e) => handleStatusChange(e.target.value)}
                         className="bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-500"
                     >
-                        <option value="all">Todos los estados</option>
-                        <option value="active">Activos</option>
-                        <option value="inactive">Inactivos</option>
-                        <option value="maintenance">En mantenimiento</option>
+                        <option value="all">All statuses</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="maintenance">Maintenance</option>
                     </select>
                 </div>
                 <div>
@@ -96,18 +96,18 @@ export default function LocationsTable({ locations }) {
                         onChange={(e) => handleItemsPerPageChange(e.target.value)}
                         className="bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-500"
                     >
-                        <option value="10">10 por página</option>
-                        <option value="25">25 por página</option>
-                        <option value="50">50 por página</option>
-                        <option value="100">100 por página</option>
+                        <option value="10">10 per page</option>
+                        <option value="25">25 per page</option>
+                        <option value="50">50 per page</option>
+                        <option value="100">100 per page</option>
                     </select>
                 </div>
             </div>
 
             <div className="text-gray-400 text-sm mb-4 flex items-center justify-between">
                 <span>
-                    Mostrando {startIndex + 1}-{Math.min(endIndex, filteredLocations.length)} de {filteredLocations.length} ubicaciones
-                    {filteredLocations.length !== locations.length && ` (${locations.length} totales)`}
+                    Showing {startIndex + 1}-{Math.min(endIndex, filteredLocations.length)} of {filteredLocations.length} locations
+                    {filteredLocations.length !== locations.length && ` (${locations.length} total)`}
                 </span>
             </div>
 
@@ -115,18 +115,18 @@ export default function LocationsTable({ locations }) {
                 <table className="w-full">
                     <thead>
                         <tr className="border-b border-zinc-800">
-                            <th className="text-left py-3 px-4 text-amber-500 font-semibold">Nombre</th>
-                            <th className="text-left py-3 px-4 text-amber-500 font-semibold">Dirección</th>
-                            <th className="text-left py-3 px-4 text-amber-500 font-semibold">Coordenadas</th>
-                            <th className="text-left py-3 px-4 text-amber-500 font-semibold">Estado</th>
-                            <th className="text-left py-3 px-4 text-amber-500 font-semibold">Notas</th>
+                            <th className="text-left py-3 px-4 text-amber-500 font-semibold">Name</th>
+                            <th className="text-left py-3 px-4 text-amber-500 font-semibold">Address</th>
+                            <th className="text-left py-3 px-4 text-amber-500 font-semibold">Coordinates</th>
+                            <th className="text-left py-3 px-4 text-amber-500 font-semibold">Status</th>
+                            <th className="text-left py-3 px-4 text-amber-500 font-semibold">Notes</th>
                         </tr>
                     </thead>
                     <tbody>
                         {currentLocations.length === 0 ? (
                             <tr>
                                 <td colSpan="5" className="text-center py-8 text-gray-500">
-                                    No se encontraron ubicaciones
+                                    No locations found
                                 </td>
                             </tr>
                         ) : (
@@ -159,7 +159,7 @@ export default function LocationsTable({ locations }) {
                 </table>
             </div>
 
-            {/* Controles de paginación */}
+            {/* Pagination controls */}
             {totalPages > 1 && (
                 <div className="flex items-center justify-between mt-6 pt-4 border-t border-zinc-800">
                     <button
@@ -171,7 +171,7 @@ export default function LocationsTable({ locations }) {
                                 : 'bg-amber-500 text-black hover:bg-amber-600'
                         }`}
                     >
-                        ← Anterior
+                        ← Previous
                     </button>
 
                     <div className="flex items-center gap-2">
@@ -234,7 +234,7 @@ export default function LocationsTable({ locations }) {
                                 : 'bg-amber-500 text-black hover:bg-amber-600'
                         }`}
                     >
-                        Siguiente →
+                        Next →
                     </button>
                 </div>
             )}

@@ -76,8 +76,8 @@ export default function LocationsMap({ locations }) {
             const response = await axios.get(url);
             setGeoFilteredLocations(response.data);
         } catch (error) {
-            console.error('Error aplicando filtro geográfico:', error);
-            alert('Error al aplicar filtro geográfico. Verifica los parámetros.');
+            console.error('Error applying geographic filter:', error);
+            alert('Error applying geographic filter. Please verify the parameters.');
         } finally {
             setIsLoadingGeoFilter(false);
         }
@@ -235,13 +235,13 @@ export default function LocationsMap({ locations }) {
     const getStatusLabel = (status) => {
         switch(status) {
             case 'active':
-                return 'Activo';
+                return 'Active';
             case 'inactive':
-                return 'Inactivo';
+                return 'Inactive';
             case 'maintenance':
-                return 'Mantenimiento';
+                return 'Maintenance';
             default:
-                return status || 'Activo';
+                return status || 'Active';
         }
     };
 
@@ -257,8 +257,8 @@ export default function LocationsMap({ locations }) {
             <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 h-[600px] flex items-center justify-center">
                 <div className="text-center">
                     <div className="text-6xl mb-4">🗺️</div>
-                    <div className="text-gray-400 text-lg">No hay ubicaciones para mostrar en el mapa</div>
-                    <div className="text-gray-600 text-sm mt-2">Sube un archivo CSV para ver los andamios</div>
+                    <div className="text-gray-400 text-lg">No locations to display on the map</div>
+                    <div className="text-gray-600 text-sm mt-2">Upload a CSV file to view scaffolding locations</div>
                 </div>
             </div>
         );
@@ -266,36 +266,36 @@ export default function LocationsMap({ locations }) {
 
     return (
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-            {/* Estadísticas */}
+            {/* Statistics */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
                 <div className="bg-zinc-950 rounded-lg p-3 border border-zinc-800">
                     <div className="text-gray-500 text-xs mb-1">Total</div>
                     <div className="text-white text-2xl font-bold">{stats.total}</div>
                 </div>
                 <div className="bg-zinc-950 rounded-lg p-3 border border-emerald-500/30">
-                    <div className="text-gray-500 text-xs mb-1">Activos</div>
+                    <div className="text-gray-500 text-xs mb-1">Active</div>
                     <div className="text-emerald-400 text-2xl font-bold">{stats.active}</div>
                 </div>
                 <div className="bg-zinc-950 rounded-lg p-3 border border-amber-500/30">
-                    <div className="text-gray-500 text-xs mb-1">Mantenimiento</div>
+                    <div className="text-gray-500 text-xs mb-1">Maintenance</div>
                     <div className="text-amber-400 text-2xl font-bold">{stats.maintenance}</div>
                 </div>
                 <div className="bg-zinc-950 rounded-lg p-3 border border-gray-500/30">
-                    <div className="text-gray-500 text-xs mb-1">Inactivos</div>
+                    <div className="text-gray-500 text-xs mb-1">Inactive</div>
                     <div className="text-gray-400 text-2xl font-bold">{stats.inactive}</div>
                 </div>
                 <div className="bg-zinc-950 rounded-lg p-3 border border-zinc-800">
-                    <div className="text-gray-500 text-xs mb-1">Edad Promedio</div>
+                    <div className="text-gray-500 text-xs mb-1">Average Age</div>
                     <div className="text-white text-2xl font-bold">{stats.avgAge}<span className="text-sm text-gray-500">d</span></div>
                 </div>
             </div>
 
-            {/* Filtros Básicos */}
+            {/* Basic Filters */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div>
                     <input
                         type="text"
-                        placeholder="🔍 Buscar por nombre o dirección..."
+                        placeholder="🔍 Search by name or address..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500"
@@ -307,10 +307,10 @@ export default function LocationsMap({ locations }) {
                         onChange={(e) => setStatusFilter(e.target.value)}
                         className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-500"
                     >
-                        <option value="all">Todos los estados</option>
-                        <option value="active">Activos</option>
-                        <option value="inactive">Inactivos</option>
-                        <option value="maintenance">En mantenimiento</option>
+                        <option value="all">All statuses</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="maintenance">Maintenance</option>
                     </select>
                 </div>
                 <div>
@@ -319,45 +319,45 @@ export default function LocationsMap({ locations }) {
                         onChange={(e) => setAgeFilter(e.target.value)}
                         className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-500"
                     >
-                        <option value="all">Todas las antigüedades</option>
-                        <option value="new">Nuevos (≤ 30 días)</option>
-                        <option value="recent">Recientes (31-90 días)</option>
-                        <option value="old">Antiguos (91-365 días)</option>
-                        <option value="very-old">Muy antiguos (&gt; 365 días)</option>
+                        <option value="all">All ages</option>
+                        <option value="new">New (≤ 30 days)</option>
+                        <option value="recent">Recent (31-90 days)</option>
+                        <option value="old">Old (91-365 days)</option>
+                        <option value="very-old">Very old (&gt; 365 days)</option>
                     </select>
                 </div>
             </div>
 
-            {/* Botón para mostrar filtros geográficos */}
+            {/* Button to show geographic filters */}
             <div className="mb-4">
                 <button
                     onClick={() => setShowGeoFilters(!showGeoFilters)}
                     className="w-full md:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
                 >
                     <span>🌍</span>
-                    <span>{showGeoFilters ? 'Ocultar' : 'Mostrar'} Filtros Geográficos</span>
+                    <span>{showGeoFilters ? 'Hide' : 'Show'} Geographic Filters</span>
                 </button>
             </div>
 
-            {/* Panel de Filtros Geográficos */}
+            {/* Geographic Filters Panel */}
             {showGeoFilters && (
                 <div className="mb-6 p-4 bg-zinc-950 rounded-lg border border-blue-500/30">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-white font-semibold flex items-center gap-2">
                             <span>🗺️</span>
-                            <span>Filtros Geográficos</span>
+                            <span>Geographic Filters</span>
                         </h3>
                         {geoFilteredLocations && (
                             <button
                                 onClick={clearGeoFilter}
                                 className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition-colors"
                             >
-                                ✕ Limpiar filtro
+                                ✕ Clear filter
                             </button>
                         )}
                     </div>
 
-                    {/* Pestañas */}
+                    {/* Tabs */}
                     <div className="flex gap-2 mb-4">
                         <button
                             onClick={() => setGeoFilterType('radius')}
@@ -367,7 +367,7 @@ export default function LocationsMap({ locations }) {
                                     : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'
                             }`}
                         >
-                            📍 Filtro por Radio
+                            📍 Radius Filter
                         </button>
                         <button
                             onClick={() => setGeoFilterType('bbox')}
@@ -377,60 +377,60 @@ export default function LocationsMap({ locations }) {
                                     : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'
                             }`}
                         >
-                            ▭ Filtro por Área
+                            ▭ Area Filter
                         </button>
                     </div>
 
-                    {/* Filtro por Radio */}
+                    {/* Radius Filter */}
                     {geoFilterType === 'radius' && (
                         <div className="space-y-3">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                 <div>
-                                    <label className="block text-gray-400 text-xs mb-1">Latitud</label>
+                                    <label className="block text-gray-400 text-xs mb-1">Latitude</label>
                                     <input
                                         type="number"
                                         step="0.0001"
                                         value={radiusLat}
                                         onChange={(e) => setRadiusLat(e.target.value)}
-                                        placeholder="Ej: 40.7580"
+                                        placeholder="Ex: 40.7580"
                                         className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-gray-400 text-xs mb-1">Longitud</label>
+                                    <label className="block text-gray-400 text-xs mb-1">Longitude</label>
                                     <input
                                         type="number"
                                         step="0.0001"
                                         value={radiusLng}
                                         onChange={(e) => setRadiusLng(e.target.value)}
-                                        placeholder="Ej: -73.9855"
+                                        placeholder="Ex: -73.9855"
                                         className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-gray-400 text-xs mb-1">Radio (km)</label>
+                                    <label className="block text-gray-400 text-xs mb-1">Radius (km)</label>
                                     <input
                                         type="number"
                                         step="0.1"
                                         value={radius}
                                         onChange={(e) => setRadius(e.target.value)}
-                                        placeholder="Ej: 5"
+                                        placeholder="Ex: 5"
                                         className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
                                     />
                                 </div>
                             </div>
                             <p className="text-gray-500 text-xs">
-                                💡 Busca todas las ubicaciones dentro de un radio específico desde un punto central
+                                💡 Search all locations within a specific radius from a center point
                             </p>
                         </div>
                     )}
 
-                    {/* Filtro por Bounding Box */}
+                    {/* Bounding Box Filter */}
                     {geoFilterType === 'bbox' && (
                         <div className="space-y-3">
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                                 <div>
-                                    <label className="block text-gray-400 text-xs mb-1">Lat Mín</label>
+                                    <label className="block text-gray-400 text-xs mb-1">Min Lat</label>
                                     <input
                                         type="number"
                                         step="0.0001"
@@ -441,7 +441,7 @@ export default function LocationsMap({ locations }) {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-gray-400 text-xs mb-1">Lat Máx</label>
+                                    <label className="block text-gray-400 text-xs mb-1">Max Lat</label>
                                     <input
                                         type="number"
                                         step="0.0001"
@@ -452,7 +452,7 @@ export default function LocationsMap({ locations }) {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-gray-400 text-xs mb-1">Lng Mín</label>
+                                    <label className="block text-gray-400 text-xs mb-1">Min Lng</label>
                                     <input
                                         type="number"
                                         step="0.0001"
@@ -463,7 +463,7 @@ export default function LocationsMap({ locations }) {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-gray-400 text-xs mb-1">Lng Máx</label>
+                                    <label className="block text-gray-400 text-xs mb-1">Max Lng</label>
                                     <input
                                         type="number"
                                         step="0.0001"
@@ -475,12 +475,12 @@ export default function LocationsMap({ locations }) {
                                 </div>
                             </div>
                             <p className="text-gray-500 text-xs">
-                                💡 Busca todas las ubicaciones dentro de un área rectangular
+                                💡 Search all locations within a rectangular area
                             </p>
                         </div>
                     )}
 
-                    {/* Botón aplicar */}
+                    {/* Apply button */}
                     {geoFilterType !== 'none' && (
                         <button
                             onClick={applyGeoFilter}
@@ -493,12 +493,12 @@ export default function LocationsMap({ locations }) {
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                                     </svg>
-                                    <span>Aplicando filtro...</span>
+                                    <span>Applying filter...</span>
                                 </>
                             ) : (
                                 <>
                                     <span>🎯</span>
-                                    <span>Aplicar Filtro Geográfico</span>
+                                    <span>Apply Geographic Filter</span>
                                 </>
                             )}
                         </button>
@@ -506,39 +506,39 @@ export default function LocationsMap({ locations }) {
                 </div>
             )}
 
-            {/* Indicador de filtro activo */}
+            {/* Active filter indicator */}
             {geoFilteredLocations && (
                 <div className="mb-4 p-3 bg-blue-950 border border-blue-500 rounded-lg">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 text-blue-300 text-sm">
                             <span>✓</span>
                             <span>
-                                Filtro geográfico activo: {geoFilterType === 'radius' ?
-                                    `Radio de ${radius} km desde (${radiusLat}, ${radiusLng})` :
-                                    `Área: Lat ${minLat}-${maxLat}, Lng ${minLng}-${maxLng}`
+                                Geographic filter active: {geoFilterType === 'radius' ?
+                                    `Radius of ${radius} km from (${radiusLat}, ${radiusLng})` :
+                                    `Area: Lat ${minLat}-${maxLat}, Lng ${minLng}-${maxLng}`
                                 }
                             </span>
                         </div>
-                        <span className="text-blue-400 font-bold">{geoFilteredLocations.length} resultados</span>
+                        <span className="text-blue-400 font-bold">{geoFilteredLocations.length} results</span>
                     </div>
                 </div>
             )}
 
-            {/* Leyenda */}
+            {/* Legend */}
             <div className="mb-4 p-4 bg-zinc-950 rounded-lg border border-zinc-800">
-                <div className="text-gray-400 text-xs font-semibold mb-2 uppercase">Estado</div>
+                <div className="text-gray-400 text-xs font-semibold mb-2 uppercase">Status</div>
                 <div className="flex items-center gap-4 text-sm">
                     <div className="flex items-center gap-2">
                         <div className="w-4 h-4 bg-emerald-500 rounded-full border-2 border-white"></div>
-                        <span className="text-gray-300">Activos</span>
+                        <span className="text-gray-300">Active</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <div className="w-4 h-4 bg-amber-500 rounded-full border-2 border-white"></div>
-                        <span className="text-gray-300">Mantenimiento</span>
+                        <span className="text-gray-300">Maintenance</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <div className="w-4 h-4 bg-gray-500 rounded-full border-2 border-white"></div>
-                        <span className="text-gray-300">Inactivos</span>
+                        <span className="text-gray-300">Inactive</span>
                     </div>
                 </div>
             </div>
@@ -546,7 +546,7 @@ export default function LocationsMap({ locations }) {
             {filteredLocations.length === 0 ? (
                 <div className="bg-zinc-950 rounded-lg p-12 text-center border border-zinc-800">
                     <div className="text-4xl mb-3">🔍</div>
-                    <div className="text-gray-400">No se encontraron ubicaciones con los filtros seleccionados</div>
+                    <div className="text-gray-400">No locations found with the selected filters</div>
                     <button
                         onClick={() => {
                             setSearchTerm('');
@@ -556,7 +556,7 @@ export default function LocationsMap({ locations }) {
                         }}
                         className="mt-4 px-4 py-2 bg-amber-500 text-black rounded-lg hover:bg-amber-600 transition-colors"
                     >
-                        Limpiar todos los filtros
+                        Clear all filters
                     </button>
                 </div>
             ) : (
@@ -643,7 +643,7 @@ export default function LocationsMap({ locations }) {
 
                                                 {distance !== undefined && (
                                                     <div className="text-sm text-blue-600 font-semibold mb-2">
-                                                        📏 {distance.toFixed(2)} km de distancia
+                                                        📏 {distance.toFixed(2)} km distance
                                                     </div>
                                                 )}
 
@@ -659,7 +659,7 @@ export default function LocationsMap({ locations }) {
 
                                                 {location.created_at && (
                                                     <div className="text-xs text-gray-600 mb-2">
-                                                        ⏱️ {getAgeInDays(location.created_at)} días de antigüedad
+                                                        ⏱️ {getAgeInDays(location.created_at)} days old
                                                     </div>
                                                 )}
 

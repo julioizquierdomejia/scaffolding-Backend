@@ -61,17 +61,17 @@ export default function ScaffoldingDashboard({ auth }) {
 
     const getErrorMessage = (error, status) => {
         const errorMap = {
-            400: 'Solicitud inválida',
-            401: 'No autorizado',
-            403: 'Acceso denegado',
-            404: 'Endpoint no encontrado',
-            413: 'Archivo muy grande',
-            415: 'Tipo no soportado',
-            422: 'Datos inválidos',
-            429: 'Muchas solicitudes',
-            500: 'Error del servidor',
-            502: 'Servidor caído',
-            503: 'Servicio no disponible',
+            400: 'Invalid request',
+            401: 'Unauthorized',
+            403: 'Access denied',
+            404: 'Endpoint not found',
+            413: 'File too large',
+            415: 'Unsupported type',
+            422: 'Invalid data',
+            429: 'Too many requests',
+            500: 'Server error',
+            502: 'Server down',
+            503: 'Service unavailable',
         };
 
         if (status && errorMap[status]) {
@@ -79,16 +79,16 @@ export default function ScaffoldingDashboard({ auth }) {
         }
 
         if (error.message.includes('Failed to fetch')) {
-            return 'Sin conexión';
+            return 'No connection';
         }
         if (error.message.includes('NetworkError')) {
-            return 'Error de red';
+            return 'Network error';
         }
         if (error.message.includes('timeout')) {
-            return 'Tiempo agotado';
+            return 'Request timeout';
         }
 
-        return 'Error desconocido';
+        return 'Unknown error';
     };
 
     const handleFileSelect = async (file) => {
@@ -167,7 +167,7 @@ export default function ScaffoldingDashboard({ auth }) {
             setUploadProgress(100);
 
             setTimeout(() => {
-                alert(`✅ Archivo subido exitosamente!\n\nProcesados: ${result.data.processed} registros\nTiempo: ${duration}s\nVelocidad: ${Math.round(result.data.processed / duration)} registros/s`);
+                alert(`✅ File uploaded successfully!\n\nProcessed: ${result.data.processed} records\nTime: ${duration}s\nSpeed: ${Math.round(result.data.processed / duration)} records/s`);
                 loadStats();
                 loadLocations();
                 setSelectedFile(null);
@@ -320,7 +320,7 @@ export default function ScaffoldingDashboard({ auth }) {
                                     <div className="flex items-start gap-3">
                                         <div className="text-red-500 text-2xl">⚠️</div>
                                         <div className="flex-1">
-                                            <div className="text-red-400 font-bold mb-2">Errores detectados</div>
+                                            <div className="text-red-400 font-bold mb-2">Errors detected</div>
                                             <div className="space-y-1">
                                                 {errors.map((error, index) => (
                                                     <div key={index} className="text-red-300 text-sm flex items-center gap-2">
@@ -336,18 +336,18 @@ export default function ScaffoldingDashboard({ auth }) {
 
                             {analyzing && (
                                 <div className="text-center p-5">
-                                    <div className="text-amber-500 text-lg font-bold mb-2">🔍 Analizando CSV...</div>
-                                    <div className="text-gray-400 text-sm">Leyendo cabeceras y haciendo match</div>
+                                    <div className="text-amber-500 text-lg font-bold mb-2">🔍 Analyzing CSV...</div>
+                                    <div className="text-gray-400 text-sm">Reading headers and matching columns</div>
                                 </div>
                             )}
 
                             {uploading && (
                                 <div className="p-5">
-                                    <div className="text-amber-500 text-lg font-bold mb-4 text-center">⚡ Procesando archivo...</div>
+                                    <div className="text-amber-500 text-lg font-bold mb-4 text-center">⚡ Processing file...</div>
 
                                     <div className="mb-2">
                                         <div className="flex justify-between text-sm text-gray-400 mb-2">
-                                            <span>Progreso</span>
+                                            <span>Progress</span>
                                             <span>{Math.round(uploadProgress)}%</span>
                                         </div>
                                         <div className="w-full bg-zinc-800 rounded-full h-3 overflow-hidden">
@@ -359,7 +359,7 @@ export default function ScaffoldingDashboard({ auth }) {
                                     </div>
 
                                     <div className="text-gray-400 text-xs text-center mt-3">
-                                        Usando bulk insert para procesar más rápido
+                                        Using bulk insert for faster processing
                                     </div>
                                 </div>
                             )}
@@ -400,20 +400,20 @@ export default function ScaffoldingDashboard({ auth }) {
                         </div>
                     </div>
 
-                    {/* Sección de visualización de datos */}
+                    {/* Data visualization section */}
                     {locations.length > 0 && (
                         <div className="mt-10">
                             <div className="flex items-center justify-between mb-6">
                                 <div>
                                     <h2 className="text-amber-500 text-2xl font-bold flex items-center gap-2">
-                                        📊 Datos Cargados
+                                        📊 Loaded Data
                                     </h2>
                                     <p className="text-gray-500 text-sm mt-1">
-                                        Visualiza todos los andamios en tabla o mapa
+                                        Visualize all scaffolding locations in table or map view
                                     </p>
                                 </div>
 
-                                {/* Switch para alternar vista */}
+                                {/* View mode toggle */}
                                 <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-lg p-2">
                                     <button
                                         onClick={() => setViewMode('table')}
@@ -424,7 +424,7 @@ export default function ScaffoldingDashboard({ auth }) {
                                         }`}
                                     >
                                         <span className="text-lg">📋</span>
-                                        <span>Tabla</span>
+                                        <span>Table</span>
                                     </button>
                                     <button
                                         onClick={() => setViewMode('map')}
@@ -435,16 +435,16 @@ export default function ScaffoldingDashboard({ auth }) {
                                         }`}
                                     >
                                         <span className="text-lg">🗺️</span>
-                                        <span>Mapa</span>
+                                        <span>Map</span>
                                     </button>
                                 </div>
                             </div>
 
-                            {/* Contenido según la vista seleccionada */}
+                            {/* Content based on selected view */}
                             {loadingLocations ? (
                                 <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-12 text-center">
                                     <div className="text-amber-500 text-4xl mb-4">⏳</div>
-                                    <div className="text-white text-lg">Cargando ubicaciones...</div>
+                                    <div className="text-white text-lg">Loading locations...</div>
                                 </div>
                             ) : viewMode === 'table' ? (
                                 <LocationsTable locations={locations} />
