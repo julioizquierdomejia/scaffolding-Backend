@@ -13,7 +13,15 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                sans: ['Inter', ...defaultTheme.fontFamily.sans],
+                manrope: ['Manrope', ...defaultTheme.fontFamily.sans],
+                inter: ['Inter', ...defaultTheme.fontFamily.sans],
+            },
+            colors: {
+                'text-black': '#252525',
+                'text-grey': '#626262',
+                'border-grey': '#cccdcf',
+                'checkbox-border': '#9dafd4',
             },
         },
     },
