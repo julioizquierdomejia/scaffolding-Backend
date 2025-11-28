@@ -28,33 +28,37 @@ export default function ColumnMapper({ csvHeaders, dbColumns, autoMapping, onCon
         .every(col => mapping[col.name] !== null && mapping[col.name] !== undefined);
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                <h2 className="text-2xl font-bold text-amber-500 mb-2">
-                    Column Mapping
-                </h2>
-                <p className="text-gray-400 text-sm mb-6">
-                    Map your CSV columns to database fields. Required fields must be mapped to continue.
-                </p>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                {/* Header */}
+                <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
+                    <h2 className="text-xl font-semibold text-gray-900">Column Mapping</h2>
+                    <button
+                        onClick={onCancel}
+                        className="text-gray-400 hover:text-gray-600 transition"
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
 
-                <div className="space-y-4 mb-6">
-                    {dbColumns.map((dbCol) => {
-                        const csvIndex = mapping[dbCol.name];
-                        const isMapped = csvIndex !== null && csvIndex !== undefined;
+                {/* Content */}
+                <div className="px-6 py-6">
+                    <div className="space-y-5">
+                        {dbColumns.map((dbCol) => {
+                            const csvIndex = mapping[dbCol.name];
 
-                        return (
-                            <div
-                                key={dbCol.name}
-                                className="bg-zinc-950 border border-zinc-800 rounded-lg p-4"
-                            >
-                                <div className="flex items-center gap-4">
+                            return (
+                                <div key={dbCol.name} className="flex items-start justify-between gap-6">
+                                    {/* Left side - Database field info */}
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-white font-semibold">
+                                            <span className="text-sm font-medium text-gray-900">
                                                 {dbCol.name}
                                             </span>
                                             {dbCol.required && (
-                                                <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded">
+                                                <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded font-medium">
                                                     Required
                                                 </span>
                                             )}
@@ -64,31 +68,21 @@ export default function ColumnMapper({ csvHeaders, dbColumns, autoMapping, onCon
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-3">
-                                        <div
-                                            className={`w-16 h-0.5 transition-all ${
-                                                isMapped
-                                                    ? 'bg-emerald-500'
-                                                    : 'bg-zinc-700'
-                                            }`}
-                                        >
-                                            {isMapped && (
-                                                <div className="relative">
-                                                    <div className="absolute -right-1 -top-1 w-2 h-2 bg-emerald-500 rounded-full" />
-                                                </div>
-                                            )}
-                                        </div>
-
+                                    {/* Right side - CSV column selector */}
+                                    <div className="flex-1">
                                         <select
                                             value={csvIndex ?? ''}
                                             onChange={(e) =>
                                                 handleMappingChange(dbCol.name, e.target.value)
                                             }
-                                            className={`bg-zinc-800 border rounded px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 ${
-                                                isMapped
-                                                    ? 'border-emerald-500 focus:ring-emerald-500'
-                                                    : 'border-zinc-700 focus:ring-amber-500'
-                                            }`}
+                                            className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
+                                            style={{
+                                                backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                                                backgroundPosition: 'right 0.5rem center',
+                                                backgroundRepeat: 'no-repeat',
+                                                backgroundSize: '1.5em 1.5em',
+                                                paddingRight: '2.5rem'
+                                            }}
                                         >
                                             <option value="">Select CSV column</option>
                                             {csvHeaders.map((header, index) => (
@@ -99,28 +93,30 @@ export default function ColumnMapper({ csvHeaders, dbColumns, autoMapping, onCon
                                         </select>
                                     </div>
                                 </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
+                    </div>
                 </div>
 
-                <div className="flex gap-3">
+                {/* Footer Buttons */}
+                <div className="px-6 py-4 border-t border-gray-200 flex gap-3">
                     <button
                         onClick={onCancel}
-                        className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white px-6 py-3 rounded-lg transition-colors"
+                        className="flex-1 px-6 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"
                     >
                         Cancel
                     </button>
                     <button
                         onClick={() => onConfirm(mapping)}
                         disabled={!isComplete}
-                        className={`flex-1 px-6 py-3 rounded-lg transition-colors ${
+                        className={`flex-1 px-6 py-2.5 rounded-lg transition font-medium ${
                             isComplete
-                                ? 'bg-amber-500 hover:bg-amber-600 text-black font-bold'
-                                : 'bg-zinc-700 text-zinc-500 cursor-not-allowed'
+                                ? 'bg-blue-900 hover:bg-blue-800 text-white'
+                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         }`}
+                        style={isComplete ? { backgroundColor: '#1E3A8A' } : {}}
                     >
-                        {isComplete ? 'Confirm & Upload' : 'Complete Required Fields'}
+                        Confirm
                     </button>
                 </div>
             </div>

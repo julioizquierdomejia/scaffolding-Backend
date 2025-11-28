@@ -30,10 +30,11 @@ function FitBounds({ locations }) {
     return null;
 }
 
-export default function LocationsMap({ locations }) {
+export default function LocationsMap({ locations, simpleView = false }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [ageFilter, setAgeFilter] = useState('all');
+    const [showFilters, setShowFilters] = useState(false);
 
     // Estados para filtros geográficos
     const [geoFilterType, setGeoFilterType] = useState('none'); // 'none', 'radius', 'bbox'
@@ -254,16 +255,137 @@ export default function LocationsMap({ locations }) {
 
     if (locations.length === 0) {
         return (
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 h-[600px] flex items-center justify-center">
+            <div className="bg-gray-100 rounded-lg p-6 h-[600px] flex items-center justify-center">
                 <div className="text-center">
                     <div className="text-6xl mb-4">🗺️</div>
-                    <div className="text-gray-400 text-lg">No locations to display on the map</div>
-                    <div className="text-gray-600 text-sm mt-2">Upload a CSV file to view scaffolding locations</div>
+                    <div className="text-gray-600 text-lg">No locations to display on the map</div>
+                    <div className="text-gray-500 text-sm mt-2">Upload a CSV file to view scaffolding locations</div>
                 </div>
             </div>
         );
     }
 
+    // Simple view for Figma design (just map with filter button)
+    if (simpleView) {
+        return (
+            <div className="h-full w-full relative">
+                {/* Filter button */}
+                <div className="absolute top-4 right-4 z-[1000]">
+                    <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className="px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-md hover:bg-gray-50 transition flex items-center gap-2"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                        </svg>
+                        <span className="font-medium">Filter</span>
+                    </button>
+
+                    {/* Filter dropdown */}
+                    {showFilters && (
+                        <div className="absolute top-full right-0 mt-2 w-72 bg-white border border-gray-200 rounded-lg shadow-lg p-4">
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Search by name or address..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                    <select
+                                        value={statusFilter}
+                                        onChange={(e) => setStatusFilter(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    >
+                                        <option value="all">All statuses</option>
+                                        <option value="active">Active</option>
+                                        <option value="inactive">Inactive</option>
+                                        <option value="maintenance">Maintenance</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Map */}
+                <MapContainer
+                    center={[filteredLocations[0]?.latitude || filteredLocations[0]?.lat || 40.7580, filteredLocations[0]?.longitude || filteredLocations[0]?.lng || -73.9855]}
+                    zoom={12}
+                    style={{ height: '100%', width: '100%', borderRadius: '8px' }}
+                >
+                    <TileLayer
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    />
+                    <FitBounds locations={filteredLocations} />
+                    <MarkerClusterGroup
+                        chunkedLoading
+                        iconCreateFunction={createClusterCustomIcon}
+                        maxClusterRadius={50}
+                        spiderfyOnMaxZoom={true}
+                        showCoverageOnHover={false}
+                    >
+                        {filteredLocations.map((location, index) => {
+                            const lat = parseFloat(location.lat || location.latitude);
+                            const lng = parseFloat(location.lng || location.longitude);
+
+                            if (isNaN(lat) || isNaN(lng)) return null;
+
+                            return (
+                                <Marker
+                                    key={location.id || index}
+                                    position={[lat, lng]}
+                                    icon={getStatusIcon(location)}
+                                >
+                                    <Popup>
+                                        <div className="p-2">
+                                            <div className="font-bold text-lg mb-2">{location.name || 'Unnamed'}</div>
+                                            <div className="text-sm text-gray-600 mb-1">{location.address || 'No address'}</div>
+                                            <div className="text-xs text-gray-500">
+                                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                                    location.status === 'active' ? 'bg-green-100 text-green-800' :
+                                                    location.status === 'inactive' ? 'bg-gray-100 text-gray-800' :
+                                                    'bg-yellow-100 text-yellow-800'
+                                                }`}>
+                                                    {getStatusLabel(location.status)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </Popup>
+                                </Marker>
+                            );
+                        })}
+                    </MarkerClusterGroup>
+                </MapContainer>
+
+                {/* Legend */}
+                <div className="absolute bottom-6 right-6 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-[1000]">
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#10b981' }}></div>
+                            <span className="text-sm text-gray-700">Active</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#f59e0b' }}></div>
+                            <span className="text-sm text-gray-700">Maintenance</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#6b7280' }}></div>
+                            <span className="text-sm text-gray-700">Inactive</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Complex view (original design)
     return (
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
             {/* Statistics */}

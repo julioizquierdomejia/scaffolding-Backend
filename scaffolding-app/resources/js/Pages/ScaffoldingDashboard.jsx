@@ -1,12 +1,14 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import ColumnMapper from '@/Components/ColumnMapper';
-import LocationsTable from '@/Components/LocationsTable';
+import UploadModal from '@/Components/UploadModal';
+import FilterModal from '@/Components/FilterModal';
 import LocationsMap from '@/Components/LocationsMap';
 
-// Scaffolding Dashboard - With column mapping, progress bar and error handling
+// Scaffolding Dashboard - One-page design matching Figma
 export default function ScaffoldingDashboard({ auth }) {
+    const { auth: authProp } = usePage().props;
+    const user = authProp?.user || auth?.user;
     const [stats, setStats] = useState({
         total_locations: 0,
         active_sites: 0,
@@ -24,8 +26,25 @@ export default function ScaffoldingDashboard({ auth }) {
     const [uploadProgress, setUploadProgress] = useState(0);
     const [errors, setErrors] = useState([]);
     const [locations, setLocations] = useState([]);
+    const [allLocations, setAllLocations] = useState([]); // Store all locations for filtering
     const [viewMode, setViewMode] = useState('table'); // 'table' or 'map'
     const [loadingLocations, setLoadingLocations] = useState(false);
+    const [showApiModal, setShowApiModal] = useState(false);
+    const [showUploadModal, setShowUploadModal] = useState(false);
+    const [showFilterModal, setShowFilterModal] = useState(false);
+    const [showUserMenu, setShowUserMenu] = useState(false);
+    const [timeRangeFilter, setTimeRangeFilter] = useState('all');
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [geoFilters, setGeoFilters] = useState({
+        filterType: 'area',
+        latMin: '',
+        latMax: '',
+        lngMin: '',
+        lngMax: '',
+        centerLat: '',
+        centerLng: '',
+        radiusKm: ''
+    });
 
     const API_BASE = '/api/v1';
 
@@ -93,6 +112,9 @@ export default function ScaffoldingDashboard({ auth }) {
 
     const handleFileSelect = async (file) => {
         if (!file) return;
+
+        // Close upload modal
+        setShowUploadModal(false);
 
         setSelectedFile(file);
         setAnalyzing(true);
@@ -195,6 +217,116 @@ export default function ScaffoldingDashboard({ auth }) {
         setMappingData(null);
     };
 
+    // Haversine formula to calculate distance between two points
+    const calculateDistance = (lat1, lon1, lat2, lon2) => {
+        const R = 6371; // Radius of Earth in kilometers
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a =
+            Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c; // Distance in kilometers
+    };
+
+    const handleFilterApply = (filters) => {
+        setGeoFilters(filters);
+        setShowFilterModal(false);
+
+        // Apply filters to locations
+        if (allLocations.length === 0) {
+            setAllLocations(locations);
+        }
+
+        const baseLocations = allLocations.length > 0 ? allLocations : locations;
+
+        // Filter by Area
+        if (filters.filterType === 'area' && (filters.latMin || filters.latMax || filters.lngMin || filters.lngMax)) {
+            const filtered = baseLocations.filter(loc => {
+                const lat = parseFloat(loc.latitude);
+                const lng = parseFloat(loc.longitude);
+
+                if (filters.latMin && lat < parseFloat(filters.latMin)) return false;
+                if (filters.latMax && lat > parseFloat(filters.latMax)) return false;
+                if (filters.lngMin && lng < parseFloat(filters.lngMin)) return false;
+                if (filters.lngMax && lng > parseFloat(filters.lngMax)) return false;
+
+                return true;
+            });
+            setLocations(filtered);
+        }
+        // Filter by Radius
+        else if (filters.filterType === 'radius' && filters.centerLat && filters.centerLng && filters.radiusKm) {
+            const centerLat = parseFloat(filters.centerLat);
+            const centerLng = parseFloat(filters.centerLng);
+            const radius = parseFloat(filters.radiusKm);
+
+            const filtered = baseLocations.filter(loc => {
+                const lat = parseFloat(loc.latitude);
+                const lng = parseFloat(loc.longitude);
+                const distance = calculateDistance(centerLat, centerLng, lat, lng);
+                return distance <= radius;
+            });
+            setLocations(filtered);
+        }
+        // No filters applied
+        else {
+            setLocations(baseLocations);
+        }
+
+        // Apply time range filter if active
+        applyTimeRangeFilter(baseLocations.length > 0 ? baseLocations : locations, timeRangeFilter);
+    };
+
+    const applyTimeRangeFilter = (locationsToFilter, range) => {
+        if (range === 'all') return;
+
+        const now = new Date();
+        let cutoffDate = new Date();
+
+        switch (range) {
+            case '7days':
+                cutoffDate.setDate(now.getDate() - 7);
+                break;
+            case '30days':
+                cutoffDate.setDate(now.getDate() - 30);
+                break;
+            case '90days':
+                cutoffDate.setDate(now.getDate() - 90);
+                break;
+            case '1year':
+                cutoffDate.setFullYear(now.getFullYear() - 1);
+                break;
+            default:
+                return;
+        }
+
+        const filtered = locationsToFilter.filter(loc => {
+            if (!loc.created_at) return true;
+            const locDate = new Date(loc.created_at);
+            return locDate >= cutoffDate;
+        });
+
+        setLocations(filtered);
+    };
+
+    const handleTimeRangeChange = (range) => {
+        setTimeRangeFilter(range);
+
+        if (allLocations.length === 0) {
+            setAllLocations(locations);
+        }
+
+        const baseLocations = allLocations.length > 0 ? allLocations : locations;
+
+        if (range === 'all') {
+            setLocations(baseLocations);
+        } else {
+            applyTimeRangeFilter(baseLocations, range);
+        }
+    };
+
     const handleDrag = (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -214,257 +346,577 @@ export default function ScaffoldingDashboard({ auth }) {
         }
     };
 
-    const activeGrowth = stats.active_sites > 0 ? '+12%' : '+0%';
-    const coverageGrowth = stats.coverage > 0 ? '+8%' : '+0%';
-
     return (
-        <AuthenticatedLayout
-            header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-                    Scaffolding Dashboard
-                </h2>
-            }
-        >
+        <>
             <Head title="Scaffolding Route Management System" />
 
-            <div className="min-h-screen bg-gray-900 text-white p-5">
-                <div className="max-w-7xl mx-auto">
-                    <header className="text-center mb-10">
-                        <div className="w-15 h-15 bg-amber-500 mx-auto mb-5 rounded-xl flex items-center justify-center text-3xl">
-                            📍
-                        </div>
-                        <h1 className="text-amber-500 text-3xl font-bold mb-2">
-                            Scaffolding Route Management System
-                        </h1>
-                        <p className="text-gray-500 text-sm">
-                            Upload scaffolding locations and provide real-time data to mobile applications for optimized route planning and navigation
-                        </p>
-                    </header>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
-                        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 relative">
-                            <div className="text-amber-500 text-2xl mb-4">📍</div>
-                            <div className="text-gray-500 text-xs mb-2">Total Locations</div>
-                            <div className="text-4xl font-bold">{stats.total_locations}</div>
-                            <div className="text-gray-600 text-xs mt-1">Scaffolding points</div>
-                        </div>
-
-                        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 relative">
-                            <div className="absolute top-5 right-5 text-emerald-500 text-xs font-bold">
-                                {activeGrowth}
-                            </div>
-                            <div className="text-amber-500 text-2xl mb-4">⚡</div>
-                            <div className="text-gray-500 text-xs mb-2">Active Sites</div>
-                            <div className="text-4xl font-bold">{stats.active_sites}</div>
-                            <div className="text-gray-600 text-xs mt-1">Currently operational</div>
-                        </div>
-
-                        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 relative">
-                            <div className="text-amber-500 text-2xl mb-4">💾</div>
-                            <div className="text-gray-500 text-xs mb-2">API Status</div>
-                            <div className="text-amber-500 text-2xl font-bold">Online</div>
-                            <div className="text-gray-600 text-xs mt-1">Ready for mobile app</div>
-                        </div>
-
-                        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 relative">
-                            <div className="absolute top-5 right-5 text-emerald-500 text-xs font-bold">
-                                {coverageGrowth}
-                            </div>
-                            <div className="text-amber-500 text-2xl mb-4">📊</div>
-                            <div className="text-gray-500 text-xs mb-2">Coverage</div>
-                            <div className="text-4xl font-bold">{stats.coverage}%</div>
-                            <div className="text-gray-600 text-xs mt-1">Route availability</div>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-10">
-                        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-                            <h2 className="text-amber-500 text-lg mb-5 flex items-center gap-2">
-                                📁 Upload Excel File
-                            </h2>
-
-                            <div className="bg-zinc-950 p-3 rounded-lg mb-5">
-                                <div className="text-gray-500 text-xs mb-2">Expected columns:</div>
-                                <div className="text-amber-500 text-xs font-mono">
-                                    name, latitude, longitude, address (optional), status (optional), notes (optional)
-                                </div>
+            {/* Main container with light background - Fixed viewport height */}
+            <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
+                {/* Header */}
+                <header className="bg-white border-b border-gray-200 flex-shrink-0">
+                    <div className="max-w-full mx-auto px-4 py-4">
+                        <div className="flex items-center justify-between">
+                            {/* Logo */}
+                            <div className="flex items-center gap-3">
+                                <img
+                                    src="/images/adk-logo.jpg"
+                                    alt="ADK Technology"
+                                    className="h-10 w-auto"
+                                />
                             </div>
 
-                            <div
-                                className={`border-2 border-dashed rounded-lg p-16 text-center cursor-pointer transition-all ${
-                                    dragActive
-                                        ? 'border-amber-500 bg-zinc-800'
-                                        : 'border-zinc-700 hover:border-amber-500 hover:bg-zinc-800'
-                                }`}
-                                onDragEnter={handleDrag}
-                                onDragLeave={handleDrag}
-                                onDragOver={handleDrag}
-                                onDrop={handleDrop}
-                                onClick={() => document.getElementById('fileInput').click()}
-                            >
-                                <div className="text-5xl text-amber-500 mb-5">⬆️</div>
-                                <div className="text-white text-base mb-2">Click to upload or drag and drop</div>
-                                <div className="text-gray-600 text-xs">Excel files (.xlsx, .xls, .csv)</div>
-                            </div>
-
-                            <input
-                                type="file"
-                                id="fileInput"
-                                accept=".csv,.xlsx,.xls"
-                                className="hidden"
-                                onChange={(e) => e.target.files[0] && handleFileSelect(e.target.files[0])}
-                            />
-
-                            {errors.length > 0 && (
-                                <div className="mt-4 bg-red-900/30 border border-red-500/50 rounded-lg p-4">
-                                    <div className="flex items-start gap-3">
-                                        <div className="text-red-500 text-2xl">⚠️</div>
-                                        <div className="flex-1">
-                                            <div className="text-red-400 font-bold mb-2">Errors detected</div>
-                                            <div className="space-y-1">
-                                                {errors.map((error, index) => (
-                                                    <div key={index} className="text-red-300 text-sm flex items-center gap-2">
-                                                        <span className="w-1.5 h-1.5 bg-red-400 rounded-full"></span>
-                                                        {error}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
+                            {/* User Menu */}
+                            <div className="relative">
+                                <button
+                                    onClick={() => setShowUserMenu(!showUserMenu)}
+                                    className="flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition"
+                                >
+                                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold" style={{backgroundColor: '#DBEAFE', color: '#1E3A8A'}}>
+                                        {user?.name?.substring(0, 2).toUpperCase() || 'AM'}
                                     </div>
-                                </div>
-                            )}
+                                    <span className="font-medium">{user?.name || 'Administrador'}</span>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
 
-                            {analyzing && (
-                                <div className="text-center p-5">
-                                    <div className="text-amber-500 text-lg font-bold mb-2">🔍 Analyzing CSV...</div>
-                                    <div className="text-gray-400 text-sm">Reading headers and matching columns</div>
-                                </div>
-                            )}
-
-                            {uploading && (
-                                <div className="p-5">
-                                    <div className="text-amber-500 text-lg font-bold mb-4 text-center">⚡ Processing file...</div>
-
-                                    <div className="mb-2">
-                                        <div className="flex justify-between text-sm text-gray-400 mb-2">
-                                            <span>Progress</span>
-                                            <span>{Math.round(uploadProgress)}%</span>
-                                        </div>
-                                        <div className="w-full bg-zinc-800 rounded-full h-3 overflow-hidden">
-                                            <div
-                                                className="bg-gradient-to-r from-amber-500 to-amber-600 h-full rounded-full transition-all duration-300 ease-out"
-                                                style={{ width: `${uploadProgress}%` }}
-                                            ></div>
-                                        </div>
+                                {/* Dropdown Menu */}
+                                {showUserMenu && (
+                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                                        <Link
+                                            href={route('profile.edit')}
+                                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                        >
+                                            Profile
+                                        </Link>
+                                        <Link
+                                            href={route('logout')}
+                                            method="post"
+                                            as="button"
+                                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                        >
+                                            Log Out
+                                        </Link>
                                     </div>
-
-                                    <div className="text-gray-400 text-xs text-center mt-3">
-                                        Using bulk insert for faster processing
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-                            <h2 className="text-amber-500 text-lg mb-5 flex items-center gap-2">
-                                ⚙️ API Documentation
-                            </h2>
-
-                            <div className="bg-zinc-950 p-4 rounded-lg mb-4">
-                                <div className="text-gray-500 text-xs mb-2">Base URL</div>
-                                <div className="bg-zinc-900 p-3 rounded font-mono text-xs text-amber-500 break-all">
-                                    {API_BASE}
-                                </div>
-                            </div>
-
-                            <div className="bg-zinc-950 p-4 rounded-lg mb-4">
-                                <div className="text-gray-500 text-xs mb-2">
-                                    <span className="inline-block bg-emerald-500 text-black px-2 py-1 rounded text-xs font-bold mr-2">
-                                        GET
-                                    </span>
-                                    Fetch all scaffolding locations
-                                </div>
-                                <div className="bg-zinc-900 p-3 rounded font-mono text-xs text-amber-500">
-                                    /scaffolding_locations
-                                </div>
-                            </div>
-
-                            <div className="bg-black p-4 rounded font-mono text-xs overflow-x-auto text-emerald-500">
-                                {`fetch('${API_BASE}/scaffolding_locations'){\n`}
-                                {`  headers: {\n`}
-                                {`    'apikey': 'YOUR_ANON_KEY',\n`}
-                                {`    'Content-Type': 'application/json'\n`}
-                                {`  }\n`}
-                                {`}`}
+                                )}
                             </div>
                         </div>
                     </div>
+                </header>
 
-                    {/* Data visualization section */}
-                    {locations.length > 0 && (
-                        <div className="mt-10">
-                            <div className="flex items-center justify-between mb-6">
+                {/* Main Content - Flex grow to fill remaining space */}
+                <main className="flex-1 overflow-hidden flex flex-col px-[90px] py-6">
+                    {/* Scaffolding Route Management System Section */}
+                    <div className="mb-6 flex-shrink-0">
+                        {/* Page Title and Description */}
+                        <div className="mb-6">
+                            <div className="flex items-start justify-between mb-4">
                                 <div>
-                                    <h2 className="text-amber-500 text-2xl font-bold flex items-center gap-2">
-                                        📊 Loaded Data
-                                    </h2>
-                                    <p className="text-gray-500 text-sm mt-1">
-                                        Visualize all scaffolding locations in table or map view
+                                    <h1 className="text-2xl font-bold mb-3" style={{color: '#1E3A8A'}}>
+                                        Scaffolding Route Management System
+                                    </h1>
+                                    <p className="text-gray-500 text-sm">
+                                        Upload scaffolding location and provide real-time data to mobile applications for optimized route planning and navigation
                                     </p>
                                 </div>
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setShowApiModal(true)}
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all duration-300 transform hover:scale-105 hover:shadow-md hover:border-gray-400"
+                                >
+                                    <svg className="w-5 h-5 transition-transform duration-300 hover:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    API Documentation
+                                </button>
+                                <button
+                                    onClick={() => setShowUploadModal(true)}
+                                    className="flex items-center gap-2 px-5 py-2.5 text-white rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
+                                    style={{backgroundColor: '#1E3A8A'}}
+                                    onMouseEnter={(e) => e.target.style.backgroundColor = '#1E40AF'}
+                                    onMouseLeave={(e) => e.target.style.backgroundColor = '#1E3A8A'}
+                                >
+                                    <svg className="w-5 h-5 transition-transform duration-300 hover:-translate-y-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                    Upload excel
+                                </button>
+                            </div>
+                        </div>
 
-                                {/* View mode toggle */}
-                                <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-lg p-2">
+                        {/* Statistics Cards */}
+                        <div className="grid grid-cols-4 gap-5">
+                            {/* Total Locations */}
+                            <div className="bg-white rounded-xl border border-gray-200 p-6 transform transition-all duration-300 hover:scale-105 hover:shadow-lg hover:border-blue-300 cursor-pointer">
+                                <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                        <div className="text-sm font-medium text-gray-600 mb-1">Total Locations</div>
+                                        <div className="text-xs text-gray-500 mb-3">Scaffolding point</div>
+                                        <div className="text-4xl font-bold text-gray-900 transition-all duration-300">
+                                            {loadingLocations ? (
+                                                <div className="h-10 bg-gray-200 rounded w-20 animate-pulse"></div>
+                                            ) : (
+                                                stats.total_locations || 0
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-transform duration-300 hover:rotate-12" style={{backgroundColor: '#1E3A8A'}}>
+                                        <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Active Sites */}
+                            <div className="bg-white rounded-xl border border-gray-200 p-6 transform transition-all duration-300 hover:scale-105 hover:shadow-lg hover:border-green-300 cursor-pointer">
+                                <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                        <div className="text-sm font-medium text-gray-600 mb-1">Active Sites</div>
+                                        <div className="text-xs text-gray-500 mb-3">Currently operational</div>
+                                        <div className="text-4xl font-bold text-gray-900 transition-all duration-300">
+                                            {loadingLocations ? (
+                                                <div className="h-10 bg-gray-200 rounded w-20 animate-pulse"></div>
+                                            ) : (
+                                                stats.active_sites || 0
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-transform duration-300 hover:rotate-12" style={{backgroundColor: '#1E3A8A'}}>
+                                        <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Number of downloads */}
+                            <div className="bg-white rounded-xl border border-gray-200 p-6 transform transition-all duration-300 hover:scale-105 hover:shadow-lg hover:border-purple-300 cursor-pointer">
+                                <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                        <div className="text-sm font-medium text-gray-600 mb-1">Number of downloads</div>
+                                        <div className="text-xs text-gray-500 mb-3">Number of app downloads</div>
+                                        <div className="text-4xl font-bold text-gray-900 transition-all duration-300">0</div>
+                                    </div>
+                                    <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-transform duration-300 hover:rotate-12" style={{backgroundColor: '#1E3A8A'}}>
+                                        <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* App Download Revenue */}
+                            <div className="bg-white rounded-xl border border-gray-200 p-6 transform transition-all duration-300 hover:scale-105 hover:shadow-lg hover:border-yellow-300 cursor-pointer">
+                                <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                        <div className="text-sm font-medium text-gray-600 mb-1">App Download Revenue</div>
+                                        <div className="text-xs text-gray-500 mb-3">USD amount</div>
+                                        <div className="text-4xl font-bold text-gray-900 transition-all duration-300">$ 0</div>
+                                    </div>
+                                    <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-transform duration-300 hover:rotate-12" style={{backgroundColor: '#1E3A8A'}}>
+                                        <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Imported Data Section - Show when loading or has data */}
+                    {(loadingLocations || locations.length > 0) && (
+                        <div className="flex-1 overflow-hidden flex flex-col">
+                            <div className="mb-4 flex-shrink-0">
+                                <h2 className="text-2xl font-bold mb-2" style={{color: '#1E3A8A'}}>Imported Data</h2>
+                                <p className="text-gray-500 mb-4">View all scaffolds in the table or on the map.</p>
+
+                                {/* Table/Map Tabs and Search/Filter Bar */}
+                                <div className="flex items-center justify-between mb-4">
+                            {/* Tabs and Results Counter */}
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
                                     <button
                                         onClick={() => setViewMode('table')}
-                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                                        className={`px-6 py-2 rounded-md font-medium transition ${
                                             viewMode === 'table'
-                                                ? 'bg-amber-500 text-black font-semibold'
-                                                : 'text-gray-400 hover:text-white'
+                                                ? 'bg-white text-gray-900 shadow-sm'
+                                                : 'text-gray-600 hover:text-gray-900'
                                         }`}
                                     >
-                                        <span className="text-lg">📋</span>
-                                        <span>Table</span>
+                                        Table
                                     </button>
                                     <button
                                         onClick={() => setViewMode('map')}
-                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                                        className={`px-6 py-2 rounded-md font-medium transition ${
                                             viewMode === 'map'
-                                                ? 'bg-amber-500 text-black font-semibold'
-                                                : 'text-gray-400 hover:text-white'
+                                                ? 'bg-white text-gray-900 shadow-sm'
+                                                : 'text-gray-600 hover:text-gray-900'
                                         }`}
                                     >
-                                        <span className="text-lg">🗺️</span>
-                                        <span>Map</span>
+                                        Map
                                     </button>
+                                </div>
+
+                                {/* Results Counter */}
+                                <div className="px-3 py-2 rounded-lg text-base font-semibold" style={{ backgroundColor: '#FFE3B4', color: '#F59E0B' }}>
+                                    {locations.length.toLocaleString()} results
                                 </div>
                             </div>
 
-                            {/* Content based on selected view */}
-                            {loadingLocations ? (
-                                <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-12 text-center">
-                                    <div className="text-amber-500 text-4xl mb-4">⏳</div>
-                                    <div className="text-white text-lg">Loading locations...</div>
+                            {/* Search and Filter */}
+                            <div className="flex items-center gap-4">
+                                {/* Search Bar */}
+                                <div className="relative w-80">
+                                    <input
+                                        type="text"
+                                        placeholder="Search by name o direction"
+                                        className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        onChange={(e) => {
+                                            const searchTerm = e.target.value.toLowerCase();
+                                            if (searchTerm === '') {
+                                                loadLocations();
+                                            } else {
+                                                setLocations(prev => prev.filter(loc =>
+                                                    loc.name?.toLowerCase().includes(searchTerm) ||
+                                                    loc.address?.toLowerCase().includes(searchTerm)
+                                                ));
+                                            }
+                                        }}
+                                    />
+                                    <svg className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
                                 </div>
-                            ) : viewMode === 'table' ? (
-                                <LocationsTable locations={locations} />
-                            ) : (
-                                <LocationsMap locations={locations} />
-                            )}
+
+                                {/* Time Range Dropdown */}
+                                <select
+                                    value={timeRangeFilter}
+                                    onChange={(e) => handleTimeRangeChange(e.target.value)}
+                                    className="px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700"
+                                >
+                                    <option value="all">All time</option>
+                                    <option value="7days">Last 7 days</option>
+                                    <option value="30days">Last 30 days</option>
+                                    <option value="90days">Last 90 days</option>
+                                    <option value="1year">Last year</option>
+                                </select>
+
+                                {/* Filter Button with Modal */}
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setShowFilterModal(!showFilterModal)}
+                                        className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition text-gray-700 bg-white"
+                                    >
+                                        <span>Filters</span>
+                                        <svg
+                                            className={`w-4 h-4 transition-transform ${showFilterModal ? 'rotate-180' : ''}`}
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+
+                                    {/* Filter Modal */}
+                                    {showFilterModal && (
+                                        <FilterModal
+                                            onApply={handleFilterApply}
+                                            onCancel={() => setShowFilterModal(false)}
+                                            initialFilters={geoFilters}
+                                        />
+                                    )}
+                                </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Data Table Section - Flex container with scroll */}
+                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex-1 overflow-hidden flex flex-col">
+                                {/* Table Header */}
+                                <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+                                    <div className="text-sm text-gray-600">
+                                        All {locations.length} results
+                                    </div>
+                                </div>
+
+                                {/* Table or Map Content - Scrollable area */}
+                                {viewMode === 'table' ? (
+                                    <div className="overflow-auto flex-1">
+                                        <table className="w-full">
+                                            <thead className="bg-gray-50">
+                                                <tr>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dirección</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Coordenadas</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        <div className="flex items-center gap-1">
+                                                            Status
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                            </svg>
+                                                        </div>
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                {loadingLocations ? (
+                                                    <>
+                                                        {[...Array(5)].map((_, index) => (
+                                                            <tr key={index} className="animate-pulse">
+                                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                                    <div className="h-4 bg-gray-200 rounded w-32"></div>
+                                                                </td>
+                                                                <td className="px-6 py-4">
+                                                                    <div className="h-4 bg-gray-200 rounded w-48"></div>
+                                                                </td>
+                                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                                    <div className="h-4 bg-gray-200 rounded w-40"></div>
+                                                                </td>
+                                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                                    <div className="h-6 bg-gray-200 rounded-full w-20"></div>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </>
+                                                ) : locations.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan="4" className="px-6 py-12 text-center">
+                                                            <div className="text-gray-400">No locations found. Upload a file to get started.</div>
+                                                        </td>
+                                                    </tr>
+                                                ) : (
+                                                    locations.slice(0, 10).map((location, index) => (
+                                                        <tr key={location.id || index} className="hover:bg-gray-50">
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                                {location.name || 'N/A'}
+                                                            </td>
+                                                            <td className="px-6 py-4 text-sm text-gray-600">
+                                                                {location.address || 'N/A'}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">
+                                                                {location.latitude ? Number(location.latitude).toFixed(4) : 'N/A'}, {location.longitude ? Number(location.longitude).toFixed(4) : 'N/A'}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                                <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                                                    location.status === 'active' ? 'bg-green-100 text-green-800' :
+                                                                    location.status === 'inactive' ? 'bg-red-100 text-red-800' :
+                                                                    'bg-yellow-100 text-yellow-800'
+                                                                }`}>
+                                                                    {location.status === 'active' ? 'Active' :
+                                                                     location.status === 'inactive' ? 'Inactive' :
+                                                                     location.status === 'maintenance' ? 'Maintenance' : 'Active'}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className="flex-1 relative">
+                                        <LocationsMap locations={locations} simpleView={true} />
+                                    </div>
+                                )}
+
+                                {/* Pagination */}
+                                {locations.length > 10 && viewMode === 'table' && (
+                                    <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between flex-shrink-0">
+                                        <button className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                                            Previous
+                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            <button className="px-3 py-1 text-sm text-white bg-blue-600 rounded">1</button>
+                                            <button className="px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">2</button>
+                                            <button className="px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">3</button>
+                                            <span className="px-2 text-gray-500">...</span>
+                                            <button className="px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">10</button>
+                                        </div>
+                                        <button className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                                            Next
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
-                </div>
-            </div>
+                </main>
 
-            {showMapper && mappingData && (
-                <ColumnMapper
-                    csvHeaders={mappingData.csv_headers}
-                    dbColumns={mappingData.db_columns}
-                    autoMapping={mappingData.auto_mapping}
-                    onConfirm={handleMappingConfirm}
-                    onCancel={handleMappingCancel}
-                />
-            )}
-        </AuthenticatedLayout>
+                {/* Upload Progress */}
+                {uploading && (
+                        <div className="fixed bottom-8 right-8 bg-white rounded-lg shadow-lg border border-gray-200 p-6 w-96 z-50">
+                            <div className="text-lg font-semibold text-gray-900 mb-4">Uploading file...</div>
+                            <div className="mb-2">
+                                <div className="flex justify-between text-sm text-gray-600 mb-2">
+                                    <span>Progress</span>
+                                    <span>{Math.round(uploadProgress)}%</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                    <div
+                                        className="bg-blue-600 h-full rounded-full transition-all duration-300 ease-out"
+                                        style={{ width: `${uploadProgress}%` }}
+                                    ></div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Analyzing */}
+                    {analyzing && (
+                        <div className="fixed bottom-8 right-8 bg-white rounded-lg shadow-lg border border-gray-200 p-6 w-96 z-50">
+                            <div className="text-lg font-semibold text-gray-900 mb-2">Analyzing CSV...</div>
+                            <div className="text-sm text-gray-600">Reading headers and matching columns</div>
+                        </div>
+                    )}
+
+                    {/* Errors */}
+                    {errors.length > 0 && (
+                        <div className="fixed bottom-8 right-8 bg-white rounded-lg shadow-lg border border-red-200 p-6 w-96 z-50">
+                            <div className="flex items-start gap-3">
+                                <svg className="w-6 h-6 text-red-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <div className="flex-1">
+                                    <div className="text-red-800 font-semibold mb-2">Errors detected</div>
+                                    <div className="space-y-1">
+                                        {errors.map((error, index) => (
+                                            <div key={index} className="text-red-700 text-sm">{error}</div>
+                                        ))}
+                                    </div>
+                                    <button
+                                        onClick={() => setErrors([])}
+                                        className="mt-3 text-sm text-red-600 hover:text-red-700 font-medium"
+                                    >
+                                        Dismiss
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                {/* API Documentation Modal */}
+                {showApiModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+                            {/* Modal Header */}
+                            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
+                                <h2 className="text-xl font-semibold text-gray-900">API Documentation</h2>
+                                <button
+                                    onClick={() => setShowApiModal(false)}
+                                    className="text-gray-400 hover:text-gray-600"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            {/* Modal Content */}
+                            <div className="px-6 py-4 space-y-6">
+                                {/* Base URL */}
+                                <div>
+                                    <div className="text-sm font-medium text-gray-700 mb-2">Base URL</div>
+                                    <div className="bg-gray-50 p-4 rounded-lg font-mono text-sm text-gray-800">
+                                        {window.location.origin}{API_BASE}
+                                    </div>
+                                </div>
+
+                                {/* Endpoints */}
+                                <div className="space-y-4">
+                                    <div className="border border-gray-200 rounded-lg p-4">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded">GET</span>
+                                            <span className="font-mono text-sm">/scaffolding_locations</span>
+                                        </div>
+                                        <p className="text-sm text-gray-600 mb-3">Fetch all scaffolding locations</p>
+                                        <div className="bg-gray-900 p-4 rounded-lg overflow-x-auto">
+                                            <pre className="text-green-400 text-xs font-mono">
+{`fetch('${window.location.origin}${API_BASE}/scaffolding_locations', {
+  method: 'GET',
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})`}
+                                            </pre>
+                                        </div>
+                                    </div>
+
+                                    <div className="border border-gray-200 rounded-lg p-4">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded">GET</span>
+                                            <span className="font-mono text-sm">/stats</span>
+                                        </div>
+                                        <p className="text-sm text-gray-600 mb-3">Get system statistics</p>
+                                        <div className="bg-gray-900 p-4 rounded-lg overflow-x-auto">
+                                            <pre className="text-green-400 text-xs font-mono">
+{`fetch('${window.location.origin}${API_BASE}/stats', {
+  method: 'GET',
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})`}
+                                            </pre>
+                                        </div>
+                                    </div>
+
+                                    <div className="border border-gray-200 rounded-lg p-4">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded">POST</span>
+                                            <span className="font-mono text-sm">/upload-with-mapping</span>
+                                        </div>
+                                        <p className="text-sm text-gray-600 mb-3">Upload CSV file with column mapping</p>
+                                        <div className="bg-gray-900 p-4 rounded-lg overflow-x-auto">
+                                            <pre className="text-green-400 text-xs font-mono">
+{`const formData = new FormData();
+formData.append('file', file);
+formData.append('mapping', JSON.stringify(mapping));
+
+fetch('${window.location.origin}${API_BASE}/upload-with-mapping', {
+  method: 'POST',
+  body: formData
+})`}
+                                            </pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Modal Footer */}
+                            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+                                <button
+                                    onClick={() => setShowApiModal(false)}
+                                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Upload Modal */}
+                {showUploadModal && (
+                    <UploadModal
+                        onFileSelect={handleFileSelect}
+                        onCancel={() => setShowUploadModal(false)}
+                    />
+                )}
+
+                {/* Column Mapper Modal */}
+                {showMapper && mappingData && (
+                    <ColumnMapper
+                        csvHeaders={mappingData.csv_headers}
+                        dbColumns={mappingData.db_columns}
+                        autoMapping={mappingData.auto_mapping}
+                        onConfirm={handleMappingConfirm}
+                        onCancel={handleMappingCancel}
+                    />
+                )}
+            </div>
+        </>
     );
 }
