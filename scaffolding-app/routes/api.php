@@ -33,4 +33,9 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     // Stats and Scaffolds with geographic filters
     Route::get('/stats', [ScaffoldingLocationController::class, 'stats']);
     Route::get('/scaffolds', [ScaffoldingLocationController::class, 'scaffolds']);
+
+    // Mobile map endpoints
+    Route::get('/map/markers', [ScaffoldingLocationController::class, 'mapMarkers']);
+    Route::post('/map/optimize-route', [ScaffoldingLocationController::class, 'optimizeRoute']);
+    Route::post('/map/optimize-route-destination', [ScaffoldingLocationController::class, 'optimizeRouteToDestination']);
 });
